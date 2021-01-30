@@ -36,7 +36,7 @@ class UserModel extends Model
 	 * If true, will set created_at, and updated_at
 	 * values during insert and update routines.
 	 *
-	 * @var boolean
+	 * @var bool
 	 */
 	protected $useTimestamps = true;
 
@@ -79,11 +79,11 @@ class UserModel extends Model
 	/**
 	 * Constructor
 	 *
-	 * @param ConnectionInterface $db         Connection Interface
-	 * @param ValidationInterface $validation Validation Interface
-	 * @param \Config\Aauth       $config     Config Object
+	 * @param ?ConnectionInterface $db         Connection Interface
+	 * @param ?ValidationInterface $validation Validation Interface
+	 * @param ?\Config\Aauth       $config     Config Object
 	 */
-	public function __construct(ConnectionInterface &$db = null, ValidationInterface $validation = null, \Config\Aauth $config = null)
+	public function __construct(?ConnectionInterface &$db = null, ?ValidationInterface $validation = null, ?\Config\Aauth $config = null)
 	{
 		if (is_null($config))
 		{
@@ -132,12 +132,13 @@ class UserModel extends Model
 	/**
 	 * Update
 	 *
-	 * @param integer|array|string $id   User Id
-	 * @param array|object         $data Data Array
+	 * @param int|array|string $id User Id
+	 * @param array|object $data Data Array
 	 *
-	 * @return boolean
+	 * @return bool
+	 * @throws \ReflectionException
 	 */
-	public function update($id = null, $data = null): bool
+	public function update($id = null, $data = null) : bool
 	{
 		$this->validationRules['email']    = 'if_exist|valid_email|is_unique[' . $this->table . '.email,id,{id}]';
 		$this->validationRules['password'] = 'if_exist|min_length[' . $this->config->passwordMin . ']|max_length[' . $this->config->passwordMax . ']';
@@ -149,11 +150,11 @@ class UserModel extends Model
 	/**
 	 * Update last login by User ID
 	 *
-	 * @param integer $userId User id
+	 * @param int $userId User id
 	 *
-	 * @return boolean
+	 * @return bool
 	 */
-	public function updateLastLogin(int $userId)
+	public function updateLastLogin(int $userId) : bool
 	{
 		$builder = $this->builder();
 		$request = \Config\Services::request();
@@ -168,11 +169,11 @@ class UserModel extends Model
 	/**
 	 * Update Last Activity by User ID
 	 *
-	 * @param integer $userId User id
+	 * @param int $userId User id
 	 *
-	 * @return boolean
+	 * @return bool
 	 */
-	public function updateLastActivity(int $userId)
+	public function updateLastActivity(int $userId) : bool
 	{
 		$builder = $this->builder();
 
@@ -184,12 +185,12 @@ class UserModel extends Model
 	/**
 	 * Update Banned by User ID
 	 *
-	 * @param integer $userId User id
-	 * @param boolean $banned Whether true to ban
+	 * @param int $userId User id
+	 * @param bool $banned Whether true to ban [default: false]
 	 *
-	 * @return boolean
+	 * @return bool
 	 */
-	public function updateBanned(int $userId, bool $banned = false)
+	public function updateBanned(int $userId, bool $banned = false) : bool
 	{
 		$builder = $this->builder();
 
@@ -201,11 +202,11 @@ class UserModel extends Model
 	/**
 	 * Checks if user is banned
 	 *
-	 * @param integer $userId User id
+	 * @param int $userId User id
 	 *
-	 * @return boolean
+	 * @return bool
 	 */
-	public function isBanned(int $userId)
+	public function isBanned(int $userId) : bool
 	{
 		$builder = $this->builder();
 
@@ -224,11 +225,11 @@ class UserModel extends Model
 	/**
 	 * Checks if user exist by user id
 	 *
-	 * @param integer $userId User id
+	 * @param int $userId User id
 	 *
-	 * @return boolean
+	 * @return bool
 	 */
-	public function existsById(int $userId)
+	public function existsById(int $userId) : bool
 	{
 		$builder = $this->builder();
 
@@ -247,9 +248,9 @@ class UserModel extends Model
 	 *
 	 * @param string $email Email address
 	 *
-	 * @return boolean
+	 * @return bool
 	 */
-	public function existsByEmail(string $email)
+	public function existsByEmail(string $email) : bool
 	{
 		$builder = $this->builder();
 
@@ -267,9 +268,9 @@ class UserModel extends Model
 	 *
 	 * @param string $username Username
 	 *
-	 * @return boolean
+	 * @return bool
 	 */
-	public function existsByUsername(string $username)
+	public function existsByUsername(string $username) : bool
 	{
 		if (empty($username))
 		{
@@ -294,7 +295,7 @@ class UserModel extends Model
 	 *
 	 * @return array
 	 */
-	protected function hashPassword(array $data)
+	protected function hashPassword(array $data) : array
 	{
 		if (! isset($data['data']['password']))
 		{

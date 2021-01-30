@@ -73,9 +73,9 @@ class GroupToUserModel
 	/**
 	 * Constructor
 	 *
-	 * @param ConnectionInterface $db Database object
+	 * @param ?ConnectionInterface $db Database object
 	 */
-	public function __construct(ConnectionInterface &$db = null)
+	public function __construct(?ConnectionInterface &$db = null)
 	{
 		$this->config  = new AauthConfig();
 		$this->DBGroup = $this->config->dbProfile;
@@ -94,11 +94,11 @@ class GroupToUserModel
 	/**
 	 * Get all Group Ids by User Id
 	 *
-	 * @param integer $userId User Id
+	 * @param int $userId User Id
 	 *
-	 * @return array|null
+	 * @return ?array
 	 */
-	public function findAllByUserId(int $userId)
+	public function findAllByUserId(int $userId) : ?array
 	{
 		$builder = $this->builder();
 		$builder->select('group_id');
@@ -110,11 +110,11 @@ class GroupToUserModel
 	/**
 	 * Get all User Ids by Group Id
 	 *
-	 * @param integer $groupId Group Id
+	 * @param int $groupId Group Id
 	 *
-	 * @return array|null
+	 * @return array
 	 */
-	public function findAllByGroupId(int $groupId)
+	public function findAllByGroupId(int $groupId) : ?array
 	{
 		$builder = $this->builder();
 		$builder->select('user_id');
@@ -126,12 +126,12 @@ class GroupToUserModel
 	/**
 	 * Check if exists by Group Id and User Id
 	 *
-	 * @param integer $groupId Group Id
-	 * @param integer $userId  User Id
+	 * @param int $groupId Group Id
+	 * @param int $userId User Id
 	 *
-	 * @return boolean
+	 * @return bool
 	 */
-	public function exists(int $groupId, int $userId)
+	public function exists(int $groupId, int $userId) : bool
 	{
 		$builder = $this->builder();
 
@@ -144,12 +144,12 @@ class GroupToUserModel
 	/**
 	 * Insert
 	 *
-	 * @param integer $groupId Group Id
-	 * @param integer $userId  User Id
+	 * @param int $groupId Group Id
+	 * @param int $userId User Id
 	 *
-	 * @return boolean
+	 * @return bool
 	 */
-	public function insert(int $groupId, int $userId)
+	public function insert(int $groupId, int $userId) : bool
 	{
 		$builder = $this->builder();
 
@@ -162,12 +162,12 @@ class GroupToUserModel
 	/**
 	 * Delete by Group Id and User Id
 	 *
-	 * @param integer $groupId Group Id
-	 * @param integer $userId  User Id
+	 * @param int $groupId Group Id
+	 * @param int $userId User Id
 	 *
-	 * @return boolean
+	 * @return bool
 	 */
-	public function delete(int $groupId, int $userId)
+	public function delete(int $groupId, int $userId) : bool
 	{
 		$builder = $this->builder();
 		$builder->where('group_id', $groupId);
@@ -179,11 +179,11 @@ class GroupToUserModel
 	/**
 	 * Deletes all by Group Id
 	 *
-	 * @param integer $groupId Group Id
+	 * @param int $groupId Group Id
 	 *
-	 * @return boolean
+	 * @return bool
 	 */
-	public function deleteAllByGroupId(int $groupId)
+	public function deleteAllByGroupId(int $groupId) : bool
 	{
 		$builder = $this->builder();
 		$builder->where('group_id', $groupId);
@@ -194,11 +194,11 @@ class GroupToUserModel
 	/**
 	 * Deletes all by User Id
 	 *
-	 * @param integer $userId User Id
+	 * @param int $userId User Id
 	 *
-	 * @return boolean
+	 * @return bool
 	 */
-	public function deleteAllByUserId(int $userId)
+	public function deleteAllByUserId(int $userId) : bool
 	{
 		$builder = $this->builder();
 		$builder->where('user_id', $userId);
@@ -209,11 +209,11 @@ class GroupToUserModel
 	/**
 	 * Provides a shared instance of the Query Builder.
 	 *
-	 * @param string $table Table Name
+	 * @param ?string $table Table Name
 	 *
 	 * @return BaseBuilder
 	 */
-	protected function builder(string $table = null)
+	protected function builder(?string $table = null) : BaseBuilder
 	{
 		if ($this->builder instanceof BaseBuilder)
 		{

@@ -73,9 +73,9 @@ class PermToGroupModel
 	/**
 	 * Constructor
 	 *
-	 * @param ConnectionInterface $db Database object
+	 * @param ?ConnectionInterface $db Database object
 	 */
-	public function __construct(ConnectionInterface &$db = null)
+	public function __construct(?ConnectionInterface &$db = null)
 	{
 		$this->config  = new AauthConfig();
 		$this->DBGroup = $this->config->dbProfile;
@@ -94,24 +94,24 @@ class PermToGroupModel
 	/**
 	 * Get all Perm Ids by Group Id
 	 *
-	 * @param integer      $groupId Group Id
-	 * @param integer|null $state   State (0 = denied, 1 = allowed)
+	 * @param int $groupId Group Id
+	 * @param ?int $state State (0 = denied, 1 = allowed)
 	 *
-	 * @return array|null
+	 * @return ?array
 	 */
-	public function findAllByGroupId(int $groupId, int $state = null)
+	public function findAllByGroupId(int $groupId, ?int $state = null) : ?array
 	{
 		$builder = $this->builder();
 		$builder->where('group_id', $groupId);
 
-		if (is_int($state))
+		if (isset($state))
 		{
-			$builder->select('perm_id');
-			$builder->where('state', $state);
+			$builder->select('perm_id, state');
 		}
 		else
 		{
-			$builder->select('perm_id, state');
+			$builder->select('perm_id');
+			$builder->where('state', $state);
 		}
 
 		return $builder->get()->getResult('array');
@@ -120,11 +120,11 @@ class PermToGroupModel
 	/**
 	 * Get all Group Ids by Perm Id
 	 *
-	 * @param integer $permId Perm Id
+	 * @param int $permId Perm Id
 	 *
-	 * @return array|null
+	 * @return ?array
 	 */
-	public function findAllByPermId(int $permId)
+	public function findAllByPermId(int $permId) : ?array
 	{
 		$builder = $this->builder();
 		$builder->select('group_id, state');
@@ -136,12 +136,12 @@ class PermToGroupModel
 	/**
 	 * Check if Perm Id is allowed by Group Id
 	 *
-	 * @param integer $permId  Perm Id
-	 * @param integer $groupId Group Id
+	 * @param int $permId Perm Id
+	 * @param int $groupId Group Id
 	 *
-	 * @return boolean
+	 * @return bool
 	 */
-	public function allowed(int $permId, int $groupId)
+	public function allowed(int $permId, int $groupId) : bool
 	{
 		$builder = $this->builder();
 
@@ -155,12 +155,12 @@ class PermToGroupModel
 	/**
 	 * Check if Perm Id is allowed by Group Id
 	 *
-	 * @param integer $permId  Perm Id
-	 * @param integer $groupId Group Id
+	 * @param int $permId Perm Id
+	 * @param int $groupId Group Id
 	 *
-	 * @return boolean
+	 * @return bool
 	 */
-	public function denied(int $permId, int $groupId)
+	public function denied(int $permId, int $groupId) : bool
 	{
 		$builder = $this->builder();
 
@@ -176,13 +176,14 @@ class PermToGroupModel
 	 *
 	 * Inserts or Updates Perm to Group
 	 *
-	 * @param integer $permId  Perm Id
-	 * @param integer $groupId Group Id
-	 * @param integer $state   State Int (0 deny, 1 allow)
+	 * @param int $permId Perm Id
+	 * @param int $groupId Group Id
+	 * @param int $state State Int (0 deny, 1 allow) [default: 1]
 	 *
-	 * @return boolean
+	 * @return bool
+	 * @todo only return one type
 	 */
-	public function save(int $permId, int $groupId, int $state = 1)
+	public function save(int $permId, int $groupId, int $state = 1) : bool
 	{
 		$builder = $this->builder();
 		$builder->where('perm_id', $permId);
@@ -205,12 +206,12 @@ class PermToGroupModel
 	/**
 	 * Deletes by Perm Id and Group Id
 	 *
-	 * @param integer $permId  Perm Id
-	 * @param integer $groupId Group Id
+	 * @param int $permId Perm Id
+	 * @param int $groupId Group Id
 	 *
-	 * @return boolean
+	 * @return bool
 	 */
-	public function delete(int $permId, int $groupId)
+	public function delete(int $permId, int $groupId) : bool
 	{
 		$builder = $this->builder();
 		$builder->where('perm_id', $permId);
@@ -222,11 +223,11 @@ class PermToGroupModel
 	/**
 	 * Deletes all by Perm Id
 	 *
-	 * @param integer $permId Perm Id
+	 * @param int $permId Perm Id
 	 *
-	 * @return boolean
+	 * @return bool
 	 */
-	public function deleteAllByPermId(int $permId)
+	public function deleteAllByPermId(int $permId) : bool
 	{
 		$builder = $this->builder();
 		$builder->where('perm_id', $permId);
@@ -237,11 +238,11 @@ class PermToGroupModel
 	/**
 	 * Deletes all by Group Id
 	 *
-	 * @param integer $groupId Group Id
+	 * @param int $groupId Group Id
 	 *
-	 * @return boolean
+	 * @return bool
 	 */
-	public function deleteAllByGroupId(int $groupId)
+	public function deleteAllByGroupId(int $groupId) : bool
 	{
 		$builder = $this->builder();
 		$builder->where('group_id', $groupId);
@@ -252,11 +253,11 @@ class PermToGroupModel
 	/**
 	 * Provides a shared instance of the Query Builder.
 	 *
-	 * @param string $table Table Name
+	 * @param ?string $table Table Name
 	 *
 	 * @return BaseBuilder
 	 */
-	protected function builder(string $table = null)
+	protected function builder(?string $table = null) : BaseBuilder
 	{
 		if ($this->builder instanceof BaseBuilder)
 		{

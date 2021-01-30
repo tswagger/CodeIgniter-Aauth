@@ -73,9 +73,9 @@ class LoginTokenModel
 	/**
 	 * Constructor
 	 *
-	 * @param ConnectionInterface $db Database object
+	 * @param ?ConnectionInterface $db Database object
 	 */
-	public function __construct(ConnectionInterface &$db = null)
+	public function __construct(?ConnectionInterface &$db = null)
 	{
 		$this->config  = new AauthConfig();
 		$this->DBGroup = $this->config->dbProfile;
@@ -94,11 +94,11 @@ class LoginTokenModel
 	/**
 	 * Find all Login Tokens by User ID
 	 *
-	 * @param integer $userId User id
+	 * @param int $userId User id
 	 *
-	 * @return array|null
+	 * @return ?array
 	 */
-	public function findAllByUserId(int $userId)
+	public function findAllByUserId(int $userId) : ?array
 	{
 		$builder = $this->builder();
 		$builder->select('id, user_id, random_hash, selector_hash, expires_at');
@@ -112,9 +112,10 @@ class LoginTokenModel
 	 *
 	 * @param array $data Array with data
 	 *
-	 * @return boolean
+	 * @return bool
+	 * @todo only return one type
 	 */
-	public function insert(array $data)
+	public function insert(array $data) : bool
 	{
 		$builder = $this->builder();
 
@@ -128,12 +129,12 @@ class LoginTokenModel
 	/**
 	 * Update Login Token by tokenId
 	 *
-	 * @param integer $tokenId   Login Token id
-	 * @param string  $expiresAt Custom expires at date
+	 * @param int $tokenId Login Token id
+	 * @param ?string $expiresAt Custom expires at date
 	 *
-	 * @return boolean
+	 * @return bool
 	 */
-	public function update(int $tokenId, string $expiresAt = null)
+	public function update(int $tokenId, ?string $expiresAt = null) : bool
 	{
 		$builder = $this->builder();
 		$builder->where('id', $tokenId);
@@ -147,11 +148,11 @@ class LoginTokenModel
 	/**
 	 * Deletes expired Login Tokens by userId.
 	 *
-	 * @param integer $userId User id
+	 * @param int $userId User id
 	 *
-	 * @return boolean
+	 * @return bool
 	 */
-	public function deleteExpired(int $userId)
+	public function deleteExpired(int $userId) : bool
 	{
 		$builder = $this->builder();
 		$builder->where('user_id', $userId);
@@ -163,11 +164,11 @@ class LoginTokenModel
 	/**
 	 * Deletes all Login Tokens by userId.
 	 *
-	 * @param integer $userId User id
+	 * @param int $userId User id
 	 *
-	 * @return boolean
+	 * @return bool
 	 */
-	public function deleteAll(int $userId)
+	public function deleteAll(int $userId) : bool
 	{
 		$builder = $this->builder();
 		$builder->where('user_id', $userId);
@@ -178,11 +179,11 @@ class LoginTokenModel
 	/**
 	 * Provides a shared instance of the Query Builder.
 	 *
-	 * @param string $table Table Name
+	 * @param ?string $table Table Name
 	 *
 	 * @return BaseBuilder
 	 */
-	protected function builder(string $table = null)
+	protected function builder(?string $table = null) : BaseBuilder
 	{
 		if ($this->builder instanceof BaseBuilder)
 		{

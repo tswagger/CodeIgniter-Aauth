@@ -74,18 +74,18 @@ class LoginAttemptModel
 	/**
 	 * Constructor
 	 *
-	 * @param ConnectionInterface        $db       Database connection
-	 * @param \Config\Aauth              $config   Config Object
-	 * @param \CodeIgniter\HTTP\Response $response Response Class
+	 * @param ?ConnectionInterface $db Database connection
+	 * @param ?\Config\Aauth $config Config Object
+	 * @param ?\CodeIgniter\HTTP\Response $response Response Class
 	 */
-	public function __construct(ConnectionInterface &$db = null, \Config\Aauth $config = null, \CodeIgniter\HTTP\Response $response = null)
+	public function __construct(?ConnectionInterface &$db = null, ?\Config\Aauth $config = null, ?\CodeIgniter\HTTP\Response $response = null)
 	{
-		if (is_null($config))
+		if (!isset($config))
 		{
 			$config = new AauthConfig();
 		}
 
-		if (is_null($response))
+		if (!isset($response))
 		{
 			$response = service('response');
 		}
@@ -112,9 +112,9 @@ class LoginAttemptModel
 	 *
 	 * Get login attempt based on time and ip address
 	 *
-	 * @return integer
+	 * @return int
 	 */
-	public function find()
+	public function find() : int
 	{
 		if ($this->config->loginAttemptCookie)
 		{
@@ -128,7 +128,7 @@ class LoginAttemptModel
 		}
 		else
 		{
-			$agent   = $this->request->getUserAgent();
+			$agent = $this->request->getUserAgent();
 			$builder = $this->builder();
 			$builder->where('user_agent', md5($agent->getBrowser() . ' - ' . $agent->getVersion() . ' - ' . $agent->getPlatform()));
 			$builder->where('ip_address', $this->request->getIPAddress());
@@ -148,9 +148,9 @@ class LoginAttemptModel
 	 *
 	 * Inserts or Updates Login Attempt
 	 *
-	 * @return boolean
+	 * @return bool
 	 */
-	public function save()
+	public function save() : bool
 	{
 		if ($this->config->loginAttemptCookie)
 		{
@@ -226,9 +226,9 @@ class LoginAttemptModel
 	 *
 	 * Delete login attempt based on time and ip address
 	 *
-	 * @return boolean
+	 * @return bool
 	 */
-	public function delete()
+	public function delete() : bool
 	{
 		if ($this->config->loginAttemptCookie)
 		{
@@ -252,11 +252,11 @@ class LoginAttemptModel
 	/**
 	 * Provides a shared instance of the Query Builder.
 	 *
-	 * @param string $table Table name
+	 * @param ?string $table Table name
 	 *
-	 * @return boolean
+	 * @return BaseBuilder
 	 */
-	protected function builder(string $table = null)
+	protected function builder(?string $table = null) : BaseBuilder
 	{
 		if ($this->builder instanceof BaseBuilder)
 		{

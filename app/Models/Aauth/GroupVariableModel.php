@@ -89,9 +89,9 @@ class GroupVariableModel
 	/**
 	 * Constructor
 	 *
-	 * @param ConnectionInterface $db Database object
+	 * @param ?ConnectionInterface $db Database object
 	 */
-	public function __construct(ConnectionInterface &$db = null)
+	public function __construct(?ConnectionInterface &$db = null)
 	{
 		$this->config         = new AauthConfig();
 		$this->DBGroup        = $this->config->dbProfile;
@@ -113,13 +113,14 @@ class GroupVariableModel
 	 *
 	 * Find Group Variable by groupId, dataKey & optional system
 	 *
-	 * @param integer $groupId Group id
-	 * @param string  $dataKey Key of variable
-	 * @param boolean $system  Whether system variable
+	 * @param int $groupId Group id
+	 * @param string $dataKey Key of variable
+	 * @param bool $system Whether system variable [default: false]
 	 *
-	 * @return string|boolean
+	 * @return string|bool
+	 * @todo only return one type
 	 */
-	public function find(int $groupId, string $dataKey, bool $system = null)
+	public function find(int $groupId, string $dataKey, bool $system = false)
 	{
 		$builder = $this->builder();
 		$builder->select('data_value');
@@ -139,12 +140,13 @@ class GroupVariableModel
 	/**
 	 * Find all group variables
 	 *
-	 * @param integer $groupId Group id
-	 * @param boolean $system  Whether system variable
+	 * @param int $groupId Group id
+	 * @param bool $system Whether system variable [default: false]
 	 *
 	 * @return object
+	 * @todo specify object/return type
 	 */
-	public function findAll(int $groupId, bool $system = null)
+	public function findAll(int $groupId, bool $system = false)
 	{
 		$builder = $this->builder();
 		$builder->where('group_id', $groupId);
@@ -158,14 +160,14 @@ class GroupVariableModel
 	/**
 	 * Update/Insert Group Variable
 	 *
-	 * @param integer $groupId   Group id
-	 * @param string  $dataKey   Key of variable
-	 * @param string  $dataValue Value of variable
-	 * @param boolean $system    Whether system variable
+	 * @param int $groupId Group id
+	 * @param string $dataKey Key of variable
+	 * @param string $dataValue Value of variable
+	 * @param bool $system Whether system variable [default: false]
 	 *
 	 * @return BaseBuilder
 	 */
-	public function save(int $groupId, string $dataKey, string $dataValue, bool $system = null)
+	public function save(int $groupId, string $dataKey, string $dataValue, bool $system = false) : BaseBuilder
 	{
 		$builder = $this->builder();
 		$builder->where('group_id', $groupId);
@@ -187,14 +189,15 @@ class GroupVariableModel
 	/**
 	 * Inserts Group Variable
 	 *
-	 * @param integer $groupId   Group id
-	 * @param string  $dataKey   Key of variable
-	 * @param string  $dataValue Value of variable
-	 * @param boolean $system    Whether system variable
+	 * @param int $groupId Group id
+	 * @param string $dataKey Key of variable
+	 * @param string $dataValue Value of variable
+	 * @param bool $system Whether system variable [default: false]
 	 *
-	 * @return boolean
+	 * @return bool
+	 * @todo only return one type
 	 */
-	public function insert(int $groupId, string $dataKey, string $dataValue, bool $system = null)
+	public function insert(int $groupId, string $dataKey, string $dataValue, bool $system = false) : bool
 	{
 		$builder = $this->builder();
 
@@ -211,14 +214,14 @@ class GroupVariableModel
 	/**
 	 * Update Group Variable
 	 *
-	 * @param integer $groupId   Group id
-	 * @param string  $dataKey   Key of variable
-	 * @param string  $dataValue Value of variable
-	 * @param boolean $system    Whether system variable
+	 * @param int $groupId Group id
+	 * @param string $dataKey Key of variable
+	 * @param string $dataValue Value of variable
+	 * @param bool $system Whether system variable [default: false]
 	 *
 	 * @return BaseBuilder
 	 */
-	public function update(int $groupId, string $dataKey, string $dataValue, bool $system = null)
+	public function update(int $groupId, string $dataKey, string $dataValue, bool $system = false) : BaseBuilder
 	{
 		$builder = $this->builder();
 		$builder->where('group_id', $groupId);
@@ -234,13 +237,13 @@ class GroupVariableModel
 	/**
 	 * Delete Group Variable
 	 *
-	 * @param integer $groupId Group id
-	 * @param string  $dataKey Key of variable
-	 * @param boolean $system  Whether system variable
+	 * @param int $groupId Group id
+	 * @param string $dataKey Key of variable
+	 * @param bool $system Whether system variable [default: false]
 	 *
-	 * @return boolean
+	 * @return bool
 	 */
-	public function delete(int $groupId, string $dataKey, bool $system = null)
+	public function delete(int $groupId, string $dataKey, bool $system = false) : bool
 	{
 		$builder = $this->builder();
 		$builder->where('group_id', $groupId);
@@ -253,11 +256,11 @@ class GroupVariableModel
 	/**
 	 * Delete all Group Variables by Group ID
 	 *
-	 * @param integer $groupId Group id
+	 * @param int $groupId Group id
 	 *
-	 * @return boolean
+	 * @return bool
 	 */
-	public function deleteAllByGroupId(int $groupId)
+	public function deleteAllByGroupId(int $groupId) : bool
 	{
 		$builder = $this->builder();
 		$builder->where('group_id', $groupId);
@@ -274,7 +277,7 @@ class GroupVariableModel
 	 *
 	 * @return Model
 	 */
-	public function asArray()
+	public function asArray() : Model
 	{
 		$this->tempReturnType = $this->returnType = 'array';
 
@@ -291,7 +294,7 @@ class GroupVariableModel
 	 *
 	 * @return Model
 	 */
-	public function asObject(string $class = 'object')
+	public function asObject(string $class = 'object') : Model
 	{
 		$this->tempReturnType = $this->returnType = $class;
 
@@ -300,9 +303,10 @@ class GroupVariableModel
 
 	/**
 	 * Returns the first row of the result set. Will take any previous
-	 * Query Builder calls into account when determing the result set.
+	 * Query Builder calls into account when determining the result set.
 	 *
 	 * @return array|object|null
+	 * @todo only return one type
 	 */
 	public function first()
 	{
@@ -319,18 +323,18 @@ class GroupVariableModel
 	/**
 	 * Provides a shared instance of the Query Builder.
 	 *
-	 * @param string $table Table name
+	 * @param ?string $table Table name
 	 *
 	 * @return BaseBuilder
 	 */
-	protected function builder(string $table = null)
+	protected function builder(?string $table = null)
 	{
 		if ($this->builder instanceof BaseBuilder)
 		{
 			return $this->builder;
 		}
 
-		$table = empty($table) ? $this->table : $table;
+		$table = !isset($table) ? $this->table : null;
 
 		$this->builder = $this->db->table($table);
 

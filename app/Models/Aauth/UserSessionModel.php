@@ -89,9 +89,9 @@ class UserSessionModel
 	/**
 	 * Constructor
 	 *
-	 * @param ConnectionInterface $db Database object
+	 * @param ?ConnectionInterface $db Database object
 	 */
-	public function __construct(ConnectionInterface &$db = null)
+	public function __construct(?ConnectionInterface &$db = null)
 	{
 		$this->config  = new AauthConfig();
 		$this->DBGroup = $this->config->dbProfile;
@@ -112,7 +112,7 @@ class UserSessionModel
 	 *
 	 * @return array
 	 */
-	public function findAll()
+	public function findAll() : array
 	{
 		$builder = $this->builder();
 		$builder->where('timestamp >', strtotime('-' . $this->config->userActiveTime));
@@ -127,9 +127,9 @@ class UserSessionModel
 	 *
 	 * @param string $id Session id
 	 *
-	 * @return boolean
+	 * @return bool
 	 */
-	public function delete(string $id)
+	public function delete(string $id) : bool
 	{
 		$builder = $this->builder();
 		$builder->where('id', $id);
@@ -146,7 +146,7 @@ class UserSessionModel
 	 *
 	 * @return UserSessionModel
 	 */
-	public function asArray()
+	public function asArray() : UserSessionModel
 	{
 		$this->tempReturnType = $this->returnType = 'array';
 
@@ -163,7 +163,7 @@ class UserSessionModel
 	 *
 	 * @return UserSessionModel
 	 */
-	public function asObject(string $class = 'object')
+	public function asObject(string $class = 'object') : UserSessionModel
 	{
 		$this->tempReturnType = $this->returnType = $class;
 
@@ -175,6 +175,7 @@ class UserSessionModel
 	 * Query Builder calls into account when determing the result set.
 	 *
 	 * @return array|object|null
+	 * @todo only return one type
 	 */
 	public function first()
 	{
@@ -191,11 +192,11 @@ class UserSessionModel
 	/**
 	 * Provides a shared instance of the Query Builder.
 	 *
-	 * @param string $table Table name
+	 * @param ?string $table Table name
 	 *
 	 * @return BaseBuilder
 	 */
-	protected function builder(string $table = null)
+	protected function builder(?string $table = null) : BaseBuilder
 	{
 		if ($this->builder instanceof BaseBuilder)
 		{
@@ -213,12 +214,12 @@ class UserSessionModel
 	 * Provides direct access to method in the builder (if available)
 	 * and the database connection.
 	 *
-	 * @param string $name   Name
-	 * @param array  $params Params
+	 * @param string $name Name
+	 * @param array $params Params
 	 *
-	 * @return UserSessionModel|null
+	 * @return ?UserSessionModel
 	 */
-	public function __call(string $name, array $params)
+	public function __call(string $name, array $params) : ?UserSessionModel
 	{
 		$result = null;
 

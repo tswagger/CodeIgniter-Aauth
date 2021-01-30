@@ -46,19 +46,19 @@ class PermModel extends Model
 	 *
 	 * @var array
 	 */
-	protected $allowedFields = [
+	protected $allowedFields = array(
 		'name',
 		'definition',
-	];
+	);
 
 	/**
 	 * Constructor
 	 *
-	 * @param ConnectionInterface $db         Connection Interface
-	 * @param ValidationInterface $validation Validation Interface
-	 * @param \Config\Aauth       $config     Config Object
+	 * @param ?ConnectionInterface $db Connection Interface
+	 * @param ?ValidationInterface $validation Validation Interface
+	 * @param ?\Config\Aauth $config Config Object
 	 */
-	public function __construct(ConnectionInterface &$db = null, ValidationInterface $validation = null, \Config\Aauth $config = null)
+	public function __construct(?ConnectionInterface &$db = null, ?ValidationInterface $validation = null, ?\Config\Aauth $config = null)
 	{
 		if (is_null($config))
 		{
@@ -87,11 +87,11 @@ class PermModel extends Model
 	/**
 	 * Checks if perm exist by perm id
 	 *
-	 * @param integer $permId Perm id
+	 * @param int $permId Perm id
 	 *
-	 * @return boolean
+	 * @return bool
 	 */
-	public function existsById(int $permId)
+	public function existsById(int $permId) : bool
 	{
 		$builder = $this->builder();
 
@@ -110,6 +110,7 @@ class PermModel extends Model
 	 * @param string $name Perm name
 	 *
 	 * @return string|boolean
+	 * @todo only return one type
 	 */
 	public function getByName(string $name)
 	{

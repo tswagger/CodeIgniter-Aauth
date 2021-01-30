@@ -36,7 +36,7 @@ class GroupModel extends Model
 	 * If true, will set created_at, and updated_at
 	 * values during insert and update routines.
 	 *
-	 * @var boolean
+	 * @var bool
 	 */
 	protected $useTimestamps = true;
 
@@ -46,19 +46,19 @@ class GroupModel extends Model
 	 *
 	 * @var array
 	 */
-	protected $allowedFields = [
+	protected $allowedFields = array(
 		'name',
 		'definition',
-	];
+	);
 
 	/**
 	 * Constructor
 	 *
-	 * @param ConnectionInterface $db         Connection Interface
-	 * @param ValidationInterface $validation Validation Interface
-	 * @param \Config\Aauth       $config     Config Object
+	 * @param ?ConnectionInterface $db Connection Interface
+	 * @param ?ValidationInterface $validation Validation Interface
+	 * @param ?\Config\Aauth $config Config Object
 	 */
-	public function __construct(ConnectionInterface &$db = null, ValidationInterface $validation = null, \Config\Aauth $config = null)
+	public function __construct(?ConnectionInterface &$db = null, ?ValidationInterface $validation = null, ?\Config\Aauth $config = null)
 	{
 		if (is_null($config))
 		{
@@ -89,9 +89,9 @@ class GroupModel extends Model
 	 *
 	 * @param integer $groupId Group id
 	 *
-	 * @return boolean
+	 * @return bool
 	 */
-	public function existsById(int $groupId)
+	public function existsById(int $groupId) : bool
 	{
 		$builder = $this->builder();
 
@@ -109,9 +109,10 @@ class GroupModel extends Model
 	 *
 	 * @param string $groupName Group name
 	 *
-	 * @return boolean
+	 * @return bool|object
+	 * @todo only return one type
 	 */
-	public function getByName(string $groupName)
+	public function getByName(string $groupName) : bool
 	{
 		$builder = $this->builder();
 

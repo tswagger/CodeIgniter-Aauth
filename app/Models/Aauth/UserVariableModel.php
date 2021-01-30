@@ -89,9 +89,9 @@ class UserVariableModel
 	/**
 	 * Constructor
 	 *
-	 * @param ConnectionInterface $db Database object
+	 * @param ?ConnectionInterface $db Database object
 	 */
-	public function __construct(ConnectionInterface &$db = null)
+	public function __construct(?ConnectionInterface &$db = null)
 	{
 		$this->config         = new AauthConfig();
 		$this->DBGroup        = $this->config->dbProfile;
@@ -113,13 +113,14 @@ class UserVariableModel
 	 *
 	 * Find User Variable by userId, dataKey & optional system
 	 *
-	 * @param integer $userId  User id
-	 * @param string  $dataKey Key of variable
-	 * @param boolean $system  Whether system variable
+	 * @param int $userId User id
+	 * @param string $dataKey Key of variable
+	 * @param bool $system Whether system variable [default: false]
 	 *
-	 * @return string|boolean
+	 * @return string|bool
+	 * @todo only return one type
 	 */
-	public function find(int $userId, string $dataKey, bool $system = null)
+	public function find(int $userId, string $dataKey, bool $system = false)
 	{
 		$builder = $this->builder();
 		$builder->select('data_value');
@@ -139,12 +140,12 @@ class UserVariableModel
 	/**
 	 * Find all user variables
 	 *
-	 * @param integer $userId User id
-	 * @param boolean $system Whether system variable
+	 * @param int $userId User id
+	 * @param bool $system Whether system variable [default: false]
 	 *
 	 * @return array
 	 */
-	public function findAll(int $userId, bool $system = null)
+	public function findAll(int $userId, bool $system = false) : array
 	{
 		$builder = $this->builder();
 		$builder->where('user_id', $userId);
@@ -158,14 +159,15 @@ class UserVariableModel
 	/**
 	 * Update/Insert User Variable
 	 *
-	 * @param integer $userId    User id
-	 * @param string  $dataKey   Key of variable
-	 * @param string  $dataValue Value of variable
-	 * @param boolean $system    Whether system variable
+	 * @param int $userId User id
+	 * @param string $dataKey Key of variable
+	 * @param string $dataValue Value of variable
+	 * @param bool $system Whether system variable [default: false]
 	 *
-	 * @return boolean
+	 * @return bool
+	 * @todo only return one type
 	 */
-	public function save(int $userId, string $dataKey, string $dataValue, bool $system = null)
+	public function save(int $userId, string $dataKey, string $dataValue, bool $system = false) : bool
 	{
 		$builder = $this->builder();
 		$builder->where('user_id', $userId);
@@ -183,14 +185,15 @@ class UserVariableModel
 	/**
 	 * Inserts User Variable
 	 *
-	 * @param integer $userId    User id
-	 * @param string  $dataKey   Key of variable
-	 * @param string  $dataValue Value of variable
-	 * @param boolean $system    Whether system variable
+	 * @param int $userId User id
+	 * @param string $dataKey Key of variable
+	 * @param string $dataValue Value of variable
+	 * @param bool $system Whether system variable [default: false]
 	 *
-	 * @return boolean
+	 * @return bool
+	 * @todo only return one type
 	 */
-	public function insert(int $userId, string $dataKey, string $dataValue, bool $system = null)
+	public function insert(int $userId, string $dataKey, string $dataValue, bool $system = false) : bool
 	{
 		$builder = $this->builder();
 
@@ -207,14 +210,15 @@ class UserVariableModel
 	/**
 	 * Update User Variable
 	 *
-	 * @param integer $userId    User id
-	 * @param string  $dataKey   Key of variable
-	 * @param string  $dataValue Value of variable
-	 * @param boolean $system    Whether system variable
+	 * @param int $userId User id
+	 * @param string $dataKey Key of variable
+	 * @param string $dataValue Value of variable
+	 * @param bool $system Whether system variable [default: false]
 	 *
 	 * @return BaseBuilder
+	 * @todo only return one type
 	 */
-	public function update(int $userId, string $dataKey, string $dataValue, bool $system = null)
+	public function update(int $userId, string $dataKey, string $dataValue, bool $system = false) : BaseBuilder
 	{
 		$builder = $this->builder();
 		$builder->where('user_id', $userId);
@@ -230,13 +234,13 @@ class UserVariableModel
 	/**
 	 * Delete User Variable
 	 *
-	 * @param integer $userId  User id
-	 * @param string  $dataKey Key of variable
-	 * @param boolean $system  Whether system variable
+	 * @param int $userId User id
+	 * @param string $dataKey Key of variable
+	 * @param bool $system Whether system variable [default: false]
 	 *
-	 * @return boolean
+	 * @return bool
 	 */
-	public function delete(int $userId, string $dataKey, bool $system = null)
+	public function delete(int $userId, string $dataKey, bool $system = false) : bool
 	{
 		$builder = $this->builder();
 		$builder->where('user_id', $userId);
@@ -249,11 +253,11 @@ class UserVariableModel
 	/**
 	 * Delete all User Variables by User ID
 	 *
-	 * @param integer $userId User id
+	 * @param int $userId User id
 	 *
-	 * @return boolean
+	 * @return bool
 	 */
-	public function deleteAllByUserId(int $userId)
+	public function deleteAllByUserId(int $userId) : bool
 	{
 		$builder = $this->builder();
 		$builder->where('user_id', $userId);
@@ -270,7 +274,7 @@ class UserVariableModel
 	 *
 	 * @return Model
 	 */
-	public function asArray()
+	public function asArray() : Model
 	{
 		$this->tempReturnType = $this->returnType = 'array';
 
@@ -287,7 +291,7 @@ class UserVariableModel
 	 *
 	 * @return Model
 	 */
-	public function asObject(string $class = 'object')
+	public function asObject(string $class = 'object') : Model
 	{
 		$this->tempReturnType = $this->returnType = $class;
 
@@ -299,6 +303,7 @@ class UserVariableModel
 	 * Query Builder calls into account when determing the result set.
 	 *
 	 * @return array|object|null
+	 * @todo only return one type
 	 */
 	public function first()
 	{
@@ -315,11 +320,11 @@ class UserVariableModel
 	/**
 	 * Provides a shared instance of the Query Builder.
 	 *
-	 * @param string $table Table name
+	 * @param ?string $table Table name
 	 *
 	 * @return BaseBuilder
 	 */
-	protected function builder(string $table = null)
+	protected function builder(?string $table = null) : BaseBuilder
 	{
 		if ($this->builder instanceof BaseBuilder)
 		{
@@ -337,12 +342,12 @@ class UserVariableModel
 	 * Provides direct access to method in the builder (if available)
 	 * and the database connection.
 	 *
-	 * @param string $name   Name
-	 * @param array  $params Params
+	 * @param string $name Name
+	 * @param array $params Params
 	 *
-	 * @return Model|null
+	 * @return ?Model
 	 */
-	public function __call(string $name, array $params)
+	public function __call(string $name, array $params) : ?Model
 	{
 		$result = null;
 

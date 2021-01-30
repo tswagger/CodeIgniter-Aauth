@@ -73,9 +73,9 @@ class GroupToGroupModel
 	/**
 	 * Constructor
 	 *
-	 * @param ConnectionInterface $db Database object
+	 * @param ?ConnectionInterface $db Database object
 	 */
-	public function __construct(ConnectionInterface &$db = null)
+	public function __construct(?ConnectionInterface &$db = null)
 	{
 		$this->config  = new AauthConfig();
 		$this->DBGroup = $this->config->dbProfile;
@@ -94,11 +94,11 @@ class GroupToGroupModel
 	/**
 	 * Get all Group Ids by Subgroup Id
 	 *
-	 * @param integer $subgroupId Subgroup Id
+	 * @param int $subgroupId Subgroup Id
 	 *
-	 * @return array|null
+	 * @return ?array
 	 */
-	public function findAllBySubgroupId(int $subgroupId)
+	public function findAllBySubgroupId(int $subgroupId) : ?array
 	{
 		$builder = $this->builder();
 		$builder->select('group_id');
@@ -110,11 +110,11 @@ class GroupToGroupModel
 	/**
 	 * Get all Subgroup Ids by Group Id
 	 *
-	 * @param integer $groupId Group Id
+	 * @param int $groupId Group Id
 	 *
-	 * @return array|null
+	 * @return ?array
 	 */
-	public function findAllByGroupId(int $groupId)
+	public function findAllByGroupId(int $groupId) : ?array
 	{
 		$builder = $this->builder();
 		$builder->select('subgroup_id');
@@ -126,12 +126,12 @@ class GroupToGroupModel
 	/**
 	 * Check if exists by Group Id and Subgroup Id
 	 *
-	 * @param integer $groupId    Group Id
-	 * @param integer $subgroupId Subgroup Id
+	 * @param int $groupId Group Id
+	 * @param int $subgroupId Subgroup Id
 	 *
-	 * @return boolean
+	 * @return bool
 	 */
-	public function exists(int $groupId, int $subgroupId)
+	public function exists(int $groupId, int $subgroupId) : bool
 	{
 		$builder = $this->builder();
 
@@ -144,12 +144,12 @@ class GroupToGroupModel
 	/**
 	 * Insert
 	 *
-	 * @param integer $groupId    Group Id
-	 * @param integer $subgroupId Subgroup Id
+	 * @param int $groupId Group Id
+	 * @param int $subgroupId Subgroup Id
 	 *
-	 * @return boolean
+	 * @return bool
 	 */
-	public function insert(int $groupId, int $subgroupId)
+	public function insert(int $groupId, int $subgroupId) : bool
 	{
 		$builder = $this->builder();
 
@@ -162,12 +162,12 @@ class GroupToGroupModel
 	/**
 	 * Delete by Group Id and Subgroup Id
 	 *
-	 * @param integer $groupId    Group Id
-	 * @param integer $subgroupId Subgroup Id
+	 * @param int $groupId Group Id
+	 * @param int $subgroupId Subgroup Id
 	 *
-	 * @return boolean
+	 * @return bool
 	 */
-	public function delete(int $groupId, int $subgroupId)
+	public function delete(int $groupId, int $subgroupId) : bool
 	{
 		$builder = $this->builder();
 		$builder->where('group_id', $groupId);
@@ -179,11 +179,11 @@ class GroupToGroupModel
 	/**
 	 * Deletes all by Group Id
 	 *
-	 * @param integer $groupId Group Id
+	 * @param int $groupId Group Id
 	 *
-	 * @return boolean
+	 * @return bool
 	 */
-	public function deleteAllByGroupId(int $groupId)
+	public function deleteAllByGroupId(int $groupId) : bool
 	{
 		$builder = $this->builder();
 		$builder->where('group_id', $groupId);
@@ -194,11 +194,11 @@ class GroupToGroupModel
 	/**
 	 * Deletes all by Subgroup Id
 	 *
-	 * @param integer $subgroupId Subgroup Id
+	 * @param int $subgroupId Subgroup Id
 	 *
-	 * @return boolean
+	 * @return bool
 	 */
-	public function deleteAllBySubgroupId(int $subgroupId)
+	public function deleteAllBySubgroupId(int $subgroupId) : bool
 	{
 		$builder = $this->builder();
 		$builder->where('subgroup_id', $subgroupId);
@@ -209,11 +209,11 @@ class GroupToGroupModel
 	/**
 	 * Provides a shared instance of the Query Builder.
 	 *
-	 * @param string $table Table Name
+	 * @param ?string $table Table Name
 	 *
 	 * @return BaseBuilder
 	 */
-	protected function builder(string $table = null)
+	protected function builder(?string $table = null) : BaseBuilder
 	{
 		if ($this->builder instanceof BaseBuilder)
 		{
