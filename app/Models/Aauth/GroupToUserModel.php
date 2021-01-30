@@ -162,13 +162,18 @@ class GroupToUserModel
 	/**
 	 * Delete by Group Id and User Id
 	 *
-	 * @param int $groupId Group Id
-	 * @param int $userId User Id
+	 * @param ?int $groupId Group Id
+	 * @param ?int $userId User Id
 	 *
 	 * @return bool
 	 */
-	public function delete(int $groupId, int $userId) : bool
+	public function delete(?int $groupId, ?int $userId) : bool
 	{
+		// check for valid data
+		if(!isset($groupId) && !isset($userId)) {
+			return false;
+		}
+
 		$builder = $this->builder();
 		$builder->where('group_id', $groupId);
 		$builder->where('user_id', $userId);

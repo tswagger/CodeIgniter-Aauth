@@ -169,12 +169,16 @@ class UserModel extends Model
 	/**
 	 * Update Last Activity by User ID
 	 *
-	 * @param int $userId User id
+	 * @param ?int $userId User id
 	 *
 	 * @return bool
 	 */
-	public function updateLastActivity(int $userId) : bool
+	public function updateLastActivity(?int $userId) : bool
 	{
+		if(!isset($userId)) {
+			return false;
+		}
+
 		$builder = $this->builder();
 
 		$data['last_activity'] = $this->setDate();

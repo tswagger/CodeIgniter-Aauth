@@ -18,6 +18,7 @@
 
 namespace App\Libraries;
 
+use CodeIgniter\Model;
 use PHPMailer\PHPMailer\PHPMailer;
 
 /**
@@ -109,7 +110,7 @@ class Aauth
 	 * @param ?\Config\Aauth               $config Config Object
 	 * @param ?\CodeIgniter\Session\Session $session Session Class
 	 */
-	public function __construct(\Config\Aauth $config = null, \CodeIgniter\Session\Session $session = null)
+	public function __construct(?\Config\Aauth $config = null, ?\CodeIgniter\Session\Session $session = null)
 	{
 		if (! $config)
 		{
@@ -197,14 +198,14 @@ class Aauth
 	 *
 	 * Check provided details against the database. Add items to error array on fail
 	 *
-	 * @param string  $identifier Identifier
-	 * @param string  $password   Password
-	 * @param bool		$remember   Whether to remember login
-	 * @param ?string  $totpCode   TOTP Code
+	 * @param string $identifier Identifier
+	 * @param string $password Password
+	 * @param bool $remember Whether to remember login
+	 * @param ?string $totpCode TOTP Code
 	 *
 	 * @return bool
 	 */
-	public function login(string $identifier, string $password, bool $remember = false, string $totpCode = null) : bool
+	public function login(string $identifier, string $password, bool $remember = false, ?string $totpCode = null) : bool
 	{
 		helper('cookie');
 		delete_cookie($this->config->loginRememberCookie);
@@ -427,12 +428,12 @@ class Aauth
 	/**
 	 * Generate Remember
 	 *
-	 * @param int       $userId User Id
-	 * @param ?string	$expire Expire Date, relative Date or Timestamp
+	 * @param int $userId User Id
+	 * @param ?string $expire Expire Date, relative Date or Timestamp
 	 *
 	 * @return void
 	 */
-	protected function generateRemember(int $userId, string $expire = null) : void
+	protected function generateRemember(int $userId, ?string $expire = null) : void
 	{
 		helper('cookie');
 		helper('text');
@@ -575,11 +576,11 @@ class Aauth
 	 * Is member
 	 *
 	 * @param int|string $groupPar Group id or name to check
-	 * @param ?int        $userId   User id, if not given current user
+	 * @param ?int $userId User id, if not given current user
 	 *
 	 * @return bool
 	 */
-	public function isMember($groupPar, int $userId = null) : bool
+	public function isMember($groupPar, ?int $userId = null) : bool
 	{
 		$userModel = $this->getModel('User');
 
@@ -588,7 +589,8 @@ class Aauth
 			$userId = (int) @$this->session->user['id'];
 		}
 
-		if (! $groupId = $this->getGroupId($groupPar))
+		$groupId = $this->getGroupId($groupPar);
+		if (! isset($groupId) )
 		{
 			return false;
 		}
@@ -605,7 +607,7 @@ class Aauth
 	 *
 	 * @return bool
 	 */
-	public function isAdmin(int $userId = null) : bool
+	public function isAdmin(?int $userId = null) : bool
 	{
 		if (!isset($userId))
 		{
@@ -622,12 +624,12 @@ class Aauth
 	 * first checks user permissions then check group permissions
 	 *
 	 * @param int|string $permPar Permission id or name to check
-	 * @param ?int  $userId  User id to check, or if false checks current user
+	 * @param ?int $userId User id to check, or if false checks current user
 	 *
 	 * @return bool
 	 * @todo only return one type
 	 */
-	public function isAllowed($permPar, int $userId = null) : bool
+	public function isAllowed($permPar, ?int $userId = null) : bool
 	{
 		if ($this->config->totpEnabled && ! $this->config->totpLogin)
 		{
@@ -654,7 +656,8 @@ class Aauth
 		}
 		else
 		{
-			if (! $permId = $this->getPermId($permPar))
+			$permId = $this->getPermId($permPar);
+			if (! isset($permId) )
 			{
 				return false;
 			}
@@ -698,7 +701,8 @@ class Aauth
 	 */
 	public function isGroupAllowed($permPar, $groupPar = null) : bool
 	{
-		if (! $permId = $this->getPermId($permPar))
+		$permId = $this->getPermId($permPar);
+		if (! isset($permId) )
 		{
 			return false;
 		}
@@ -714,19 +718,19 @@ class Aauth
 			$groupId          = $this->getGroupId($groupPar);
 			$groupAllowed     = false;
 
-			if ($subgroups = $this->getSubgroups($groupId))
+			$subgroups = $this->getSubgroups($groupId);
+
+			foreach ($subgroups as $group)
 			{
-				foreach ($subgroups as $group)
+				if (! $groupAllowed)
 				{
-					if (! $groupAllowed)
+					if ($this->isGroupAllowed($permId, $group['subgroup_id']))
 					{
-						if ($this->isGroupAllowed($permId, $group['subgroup_id']))
-						{
-							$groupAllowed = true;
-						}
+						$groupAllowed = true;
 					}
 				}
 			}
+
 
 			if ($permToGroupModel->denied($permId, $groupId))
 			{
@@ -783,7 +787,7 @@ class Aauth
 	 * @return boolean|redirect|error
 	 * @todo adjust to only return one type
 	 */
-	public function control(string $permPar = null)
+	public function control(?string $permPar = null)
 	{
 		if ($this->config->totpEnabled && $this->isTotpRequired())
 		{
@@ -793,7 +797,8 @@ class Aauth
 
 		$this->getModel('User')->updateLastActivity($this->getUserId());
 
-		if (! $permId = $this->getPermId($permPar))
+		$permId = $this->getPermId($permPar);
+		if (! isset($permId) )
 		{
 			if (! $this->isLoggedIn())
 			{
@@ -839,10 +844,9 @@ class Aauth
 	 * @param string $password User's password
 	 * @param ?string $username User's username
 	 *
-	 * @return integer|boolean
-	 * @todo adjust to only return one type
+	 * @return ?int
 	 */
-	public function createUser(string $email, string $password, string $username = null)
+	public function createUser(string $email, string $password, ?string $username = null) : ?int
 	{
 		$userModel = $this->getModel('User');
 
@@ -856,7 +860,7 @@ class Aauth
 		{
 			$this->error(array_values($userModel->errors()));
 
-			return false;
+			return null;
 		}
 
 		if ($this->config->groupDefault)
@@ -889,7 +893,7 @@ class Aauth
 	 *
 	 * @return bool
 	 */
-	public function updateUser(int $userId, string $email = null, string $password = null, string $username = null) : bool
+	public function updateUser(int $userId, ?string $email = null, ?string $password = null, ?string $username = null) : bool
 	{
 		$userModel = $this->getModel('User');
 
@@ -979,14 +983,15 @@ class Aauth
 	 * @return array Array of users
 	 * @todo this should return an array of users type (e.g. users[])
 	 */
-	public function listUsers($groupPar = null, int $limit = 0, int $offset = 0, bool $includeBanned = true, string $orderBy = null) : array
+	public function listUsers($groupPar = null, int $limit = 0, int $offset = 0, bool $includeBanned = true, ?string $orderBy = null) : array
 	{
 		$userModel = $this->getModel('User');
 		$userModel->limit($limit, $offset);
 
 		$userModel->select('id, email, username, banned, created_at, updated_at, last_activity, last_ip_address, last_login');
 
-		if ($groupPar && $groupId = $this->getGroupId($groupPar))
+		$groupId = $this->getGroupId($groupPar);
+		if(isset($groupId))
 		{
 			$userModel->join($this->config->dbTableGroupToUser, $this->config->dbTableGroupToUser . '.user_id = ' . $this->config->dbTableUsers . '.id');
 			$userModel->where($this->config->dbTableGroupToUser . '.group_id', $groupId);
@@ -1018,13 +1023,14 @@ class Aauth
 	 * @return array Array of users
 	 * @todo this should return an array of users type (e.g. users[]) or an object containing array of users
 	 */
-	public function listUsersPaginated($groupPar = null, int $limit = 10, bool $includeBanned = true, string $orderBy = null) : array
+	public function listUsersPaginated($groupPar = null, int $limit = 10, bool $includeBanned = true, ?string $orderBy = null) : array
 	{
 		$userModel = $this->getModel('User');
 
 		$userModel->select('id, email, username, banned, created_at, updated_at, last_activity, last_ip_address, last_login');
 
-		if ($groupPar && $groupId = $this->getGroupId($groupPar))
+		$groupId = $this->getGroupId($groupPar);
+		if (isset($groupId))
 		{
 			$userModel->join($this->config->dbTableGroupToUser, $this->config->dbTableGroupToUser . '.user_id = ' . $this->config->dbTableUsers . '.id');
 			$userModel->where($this->config->dbTableGroupToUser . '.group_id', $groupId);
@@ -1156,10 +1162,10 @@ class Aauth
 	 * @param bool $includeVariables Whether to get user variables [default: false]
 	 * @param bool $systemVariables  Whether to get system user variables [default: false]
 	 *
-	 * @return object|boolean User information or false if user not found
-	 * @todo return only one type
+	 * @return ?object User information or false if user not found
+	 * @todo should return a User object
 	 */
-	public function getUser(int $userId = null, bool $includeVariables = false, bool $systemVariables = false)
+	public function getUser(?int $userId = null, bool $includeVariables = false, bool $systemVariables = false)
 	{
 		$userModel         = $this->getModel('User');
 		$userVariableModel = $this->getModel('UserVariable');
@@ -1174,8 +1180,7 @@ class Aauth
 		if (! $user = $userModel->find($userId))
 		{
 			$this->error(lang('Aauth.notFoundUser'));
-
-			return false;
+			return null;
 		}
 
 		if ($includeVariables)
@@ -1196,10 +1201,9 @@ class Aauth
 	 *
 	 * @param ?string $email Email address for user,
 	 *
-	 * @return object|boolean User information or false if user not found
-	 * @todo only return one type
+	 * @return ?int User information or false if user not found
 	 */
-	public function getUserId(string $email = null)
+	public function getUserId(?string $email = null) : ?int
 	{
 		$userModel = $this->getModel('User');
 
@@ -1214,7 +1218,7 @@ class Aauth
 
 		if (! $user = $userModel->where($where)->asArray()->first())
 		{
-			return false;
+			return null;
 		}
 
 		return $user['id'];
@@ -1290,7 +1294,7 @@ class Aauth
 	 *
 	 * @return bool
 	 */
-	public function isBanned(int $userId = null) : bool
+	public function isBanned(?int $userId = null) : bool
 	{
 		$userModel = $this->getModel('User');
 
@@ -1314,7 +1318,7 @@ class Aauth
 	 *
 	 * @return bool
 	 */
-	public function banUser(int $userId = null) : bool
+	public function banUser(?int $userId = null) : bool
 	{
 		$userModel = $this->getModel('User');
 
@@ -1340,7 +1344,7 @@ class Aauth
 	 *
 	 * @return bool
 	 */
-	public function unbanUser(int $userId = null) : bool
+	public function unbanUser(?int $userId = null) : bool
 	{
 		$userModel = $this->getModel('User');
 
@@ -1560,7 +1564,7 @@ class Aauth
 	 *
 	 * @return bool
 	 */
-	public function setUserVar(string $key, string $value, int $userId = null) : bool
+	public function setUserVar(string $key, string $value, ?int $userId = null) : bool
 	{
 		if (!isset($userId))
 		{
@@ -1587,7 +1591,7 @@ class Aauth
 	 *
 	 * @return bool
 	 */
-	public function unsetUserVar(string $key, int $userId = null) : bool
+	public function unsetUserVar(string $key, ?int $userId = null) : bool
 	{
 		if (!isset($userId))
 		{
@@ -1612,10 +1616,9 @@ class Aauth
 	 * @param string $key User Variable Key
 	 * @param ?int $userId User id, can be null to use session user
 	 *
-	 * @return boolean|string false if var is not set, the value of var if set
-	 * @todo only return one type
+	 * @return ?string false if var is not set, the value of var if set
 	 */
-	public function getUserVar(string $key, int $userId = null)
+	public function getUserVar(string $key, ?int $userId = null) : ?string
 	{
 		if (!isset($userId))
 		{
@@ -1626,14 +1629,14 @@ class Aauth
 
 		if (! $userModel->existsById($userId))
 		{
-			return false;
+			return null;
 		}
 
 		$userVariableModel = $this->getModel('UserVariable');
 
 		if (! $variable = $userVariableModel->find($userId, $key))
 		{
-			return false;
+			return null;
 		}
 
 		return $variable;
@@ -1646,10 +1649,9 @@ class Aauth
 	 *
 	 * @param ?int $userId User id, can be null to use session user
 	 *
-	 * @return boolean|array , false if var is not set, the value of var if set
-	 * @todo only return one type
+	 * @return array Array of user variables, empty array if none exist
 	 */
-	public function listUserVars(int $userId = null)
+	public function listUserVars(?int $userId = null) : array
 	{
 		if (!isset($userId))
 		{
@@ -1660,7 +1662,7 @@ class Aauth
 
 		if (! $userModel->existsById($userId))
 		{
-			return false;
+			return array();
 		}
 
 		$userVariableModel = $this->getModel('UserVariable');
@@ -1675,10 +1677,9 @@ class Aauth
 	 *
 	 * @param ?int $userId User id, can be null to use session user
 	 *
-	 * @return boolean|array
-	 * @todo only return one type
+	 * @return array Array of user variable keys, empty array if none exist
 	 */
-	public function getUserVarKeys(int $userId = null)
+	public function getUserVarKeys(?int $userId = null) : array
 	{
 		if (!isset($userId))
 		{
@@ -1689,7 +1690,7 @@ class Aauth
 
 		if (! $userModel->existsById($userId))
 		{
-			return false;
+			return array();
 		}
 
 		$userVariableModel = $this->getModel('UserVariable');
@@ -1708,10 +1709,9 @@ class Aauth
 	 * @param string $name New group name
 	 * @param string $definition Description of the group [default: '']
 	 *
-	 * @return integer|boolean Group id or false on fail
-	 * @todo only return one type
+	 * @return ?int Group id or null on fail
 	 */
-	public function createGroup(string $name, string $definition = '')
+	public function createGroup(string $name, string $definition = '') : ?int
 	{
 		$groupModel = $this->getModel('Group');
 
@@ -1721,8 +1721,7 @@ class Aauth
 		if (! $groupId = $groupModel->insert($data))
 		{
 			$this->error(array_values($groupModel->errors()));
-
-			return false;
+			return null;
 		}
 
 		$this->precacheGroups();
@@ -1737,17 +1736,19 @@ class Aauth
 	 * @param ?string $name New group name
 	 * @param ?string $definition New group definition
 	 *
-	 * @return bool
+	 * @return bool Success indicator
 	 */
-	public function updateGroup($groupPar, string $name = null, string $definition = null) : bool
+	public function updateGroup($groupPar, ?string $name = null, ?string $definition = null) : bool
 	{
 		$groupModel = $this->getModel('Group');
+
+		$groupId = $this->getGroupId($groupPar);
 
 		if (!isset($name) && !isset($definition))
 		{
 			return true;
 		}
-		else if (! $groupId = $this->getGroupId($groupPar))
+		elseif(!isset($groupId) )
 		{
 			$this->error(lang('Aauth.notFoundGroup'));
 
@@ -1777,7 +1778,7 @@ class Aauth
 	 *
 	 * @param string|int $groupPar Group id or name
 	 *
-	 * @return bool
+	 * @return bool Success indicator
 	 */
 	public function deleteGroup($groupPar) : bool
 	{
@@ -1786,7 +1787,8 @@ class Aauth
 		$groupToUserModel  = $this->getModel('GroupToUser');
 		$permToGroupModel  = $this->getModel('PermToGroup');
 
-		if (! $groupId = $this->getGroupId($groupPar))
+		$groupId = $this->getGroupId($groupPar);
+		if (! isset($groupId) )
 		{
 			$this->error(lang('Aauth.notFoundGroup'));
 
@@ -1822,14 +1824,15 @@ class Aauth
 	 * @param int|string $groupPar Group id or name to add user to
 	 * @param int $userId User id to add to group
 	 *
-	 * @return bool
+	 * @return bool Success indicator
 	 */
 	public function addMember($groupPar, int $userId) : bool
 	{
 		$userModel        = $this->getModel('User');
 		$groupToUserModel = $this->getModel('GroupToUser');
 
-		if (! $groupId = $this->getGroupId($groupPar))
+		$groupId = $this->getGroupId($groupPar);
+		if (! isset($groupId) )
 		{
 			$this->error(lang('Aauth.notFoundGroup'));
 
@@ -1857,7 +1860,7 @@ class Aauth
 	 * @param int|string $groupPar Group id or name to remove user from
 	 * @param int $userId User id to remove from group
 	 *
-	 * @return bool
+	 * @return bool Success indicator
 	 */
 	public function removeMember($groupPar, int $userId) : bool
 	{
@@ -1873,10 +1876,9 @@ class Aauth
 	 *
 	 * @param ?int $userId User id
 	 *
-	 * @return boolean|array
-	 * @todo only return one type
+	 * @return array List of user groups. Empty array if no groups
 	 */
-	public function getUserGroups(int $userId = null)
+	public function getUserGroups(?int $userId = null) : array
 	{
 		$userModel = $this->getModel('User');
 
@@ -1887,7 +1889,7 @@ class Aauth
 
 		if (! $userModel->existsById($userId))
 		{
-			return false;
+			return array();
 		}
 
 		$groupToUserModel = $this->getModel('GroupToUser');
@@ -1901,17 +1903,16 @@ class Aauth
 	 * @param int|string $userId User id
 	 * @param ?int $state State
 	 *
-	 * @return boolean|array
-	 * @todo only return one type
+	 * @return array List of user Permissions.  Empty array if no permissions.
 	 * @todo check $state to ensure null is a valid value
 	 */
-	public function getUserPerms($userId, int $state = null)
+	public function getUserPerms($userId, ?int $state = null) : array
 	{
 		$userModel = $this->getModel('User');
 
 		if (! $userModel->existsById($userId))
 		{
-			return false;
+			return array();
 		}
 
 		$permToUserModel = $this->getModel('PermToUser');
@@ -1925,26 +1926,28 @@ class Aauth
 	 * @param int|string $groupPar Group id
 	 * @param int|string $subgroupPar Subgroup id or name to add to group
 	 *
-	 * @return bool
+	 * @return bool Success indicator
 	 */
 	public function addSubgroup($groupPar, $subgroupPar) : bool
 	{
 		$groupModel        = $this->getModel('Group');
 		$groupToGroupModel = $this->getModel('GroupToGroup');
 
-		if (! $groupId = $this->getGroupId($groupPar))
+		$groupId = $this->getGroupId($groupPar);
+		$subgroupId = $this->getGroupId($subgroupPar);
+		if (! isset($groupId) )
 		{
 			$this->error(lang('Aauth.notFoundGroup'));
 
 			return false;
 		}
-		else if (! $subgroupId = $this->getGroupId($subgroupPar))
+		elseif (! isset($subgroupId) )
 		{
 			$this->error(lang('Aauth.notFoundSubgroup'));
 
 			return false;
 		}
-		else if ($groupId === $subgroupId)
+		elseif ($groupId === $subgroupId)
 		{
 			return false;
 		}
@@ -1980,7 +1983,7 @@ class Aauth
 	 * @param int|string $groupPar Group id or name to remove
 	 * @param int|string $subgroupPar Sub-Group id or name to remove
 	 *
-	 * @return bool
+	 * @return bool Success indicator
 	 */
 	public function removeSubgroup($groupPar, $subgroupPar) : bool
 	{
@@ -1994,16 +1997,17 @@ class Aauth
 	/**
 	 * Get subgroups
 	 *
-	 * @param int|string $groupPar Group id or name to get
+	 * @param ?int|string $groupPar Group id or name to get
 	 *
-	 * @return boolean|array
-	 * @todo only return one type
+	 * @return array Array of Subgroups.  Empty array if no groups
+	 * @todo This should return a list of Group objects (e.g. Groups[])
 	 */
-	public function getSubgroups($groupPar)
+	public function getSubgroups($groupPar) : array
 	{
-		if (! $groupId = $this->getGroupId($groupPar))
+		$groupId = $this->getGroupId($groupPar);
+		if (! isset($groupId) )
 		{
-			return false;
+			return array();
 		}
 
 		$groupToGroupModel = $this->getModel('GroupToGroup');
@@ -2016,15 +2020,15 @@ class Aauth
 	 *
 	 * @param int|string $groupPar Group id or name to remove
 	 *
-	 * @return array
+	 * @return array Array of Subgroups.  Empty array if no groups
 	 * @todo this should return an array of groups (e.g. Group[])
-	 * @todo only return one type
 	 */
 	public function listGroupSubgroups($groupPar) : array
 	{
-		if (! $groupId = $this->getGroupId($groupPar))
+		$groupId = $this->getGroupId($groupPar);
+		if (! isset($groupId) )
 		{
-			return false;
+			return array();
 		}
 
 		$groupModel = $this->getModel('Group');
@@ -2044,14 +2048,15 @@ class Aauth
 	 * @param int $limit Limit of users to be returned [default: 10]
 	 * @param ?string $orderBy  Order by MYSQL string (e.g. 'name ASC', 'email DESC')
 	 *
-	 * @return array
+	 * @return array Array of Subgroups.  Empty array if no groups
 	 * @todo this should return an array of groups (e.g. Groups[]) or an object containing them...
 	 */
-	public function listGroupSubgroupsPaginated($groupPar, int $limit = 10, string $orderBy = null) : array
+	public function listGroupSubgroupsPaginated($groupPar, int $limit = 10, ?string $orderBy = null) : array
 	{
-		if (! $groupId = $this->getGroupId($groupPar))
+		$groupId = $this->getGroupId($groupPar);
+		if (! isset($groupId) )
 		{
-			return false;
+			return array();
 		}
 
 		$groupModel = $this->getModel('Group');
@@ -2075,15 +2080,16 @@ class Aauth
 	 * @param int|string $groupPar Group id or name to get
 	 * @param ?int $state State (1 = allowed, 0 = denied)
 	 *
-	 * @return boolean|array
-	 * @todo only return one type
+	 * @return array Array of Permission.  Empty array if no permission
+	 * @todo This should return an array of type Permission[]
 	 * @todo check $state to ensure null is a valid value
 	 */
-	public function getGroupPerms($groupPar, int $state = null)
+	public function getGroupPerms($groupPar, ?int $state = null) : array
 	{
-		if (! $groupId = $this->getGroupId($groupPar))
+		$groupId = $this->getGroupId($groupPar);
+		if (! isset($groupId) )
 		{
-			return false;
+			return array();
 		}
 
 		$permToGroupModel = $this->getModel('PermToGroup');
@@ -2096,7 +2102,7 @@ class Aauth
 	 *
 	 * @param int $userId User id to remove from all groups
 	 *
-	 * @return bool
+	 * @return bool Success indicator
 	 */
 	public function removeMemberFromAll(int $userId) : bool
 	{
@@ -2108,7 +2114,7 @@ class Aauth
 	/**
 	 * List all groups
 	 *
-	 * @return array
+	 * @return array Array of Groups
 	 * @todo this should return an array of groups (e.g. Groups[])
 	 */
 	public function listGroups() : array
@@ -2129,7 +2135,7 @@ class Aauth
 	 * @return array
 	 * @todo this should return an array of Groups (e.g. Groups[]) or an object containing them...
 	 */
-	public function listGroupsPaginated(int $limit = 10, string $orderBy = null) : array
+	public function listGroupsPaginated(int $limit = 10, ?string $orderBy = null) : array
 	{
 		$groupModel = $this->getModel('Group');
 
@@ -2149,16 +2155,15 @@ class Aauth
 	 *
 	 * @param int $groupId Group id to get
 	 *
-	 * @return string
-	 * @todo only return one type
+	 * @return ?string Name of Group.  Null if invalid request.
 	 */
-	public function getGroupName(int $groupId) : string
+	public function getGroupName(int $groupId) : ?string
 	{
 		$groupModel = $this->getModel('Group');
 
 		if (! $group = $groupModel->find($groupId))
 		{
-			return false;
+			return null;
 		}
 
 		return $group['name'];
@@ -2167,13 +2172,12 @@ class Aauth
 	/**
 	 * Get group id
 	 *
-	 * @param int|string $groupPar Group id or name to get
+	 * @param ?string $groupPar Group id or name to get
 	 *
 	 * @return int
 	 * @todo review splitting this into two methods...
-	 * @todo only return one type
 	 */
-	public function getGroupId(string $groupPar)
+	public function getGroupId(?string $groupPar) : ?int
 	{
 		if (is_numeric($groupPar))
 		{
@@ -2182,7 +2186,7 @@ class Aauth
 				return $groupPar;
 			}
 		}
-		else
+		elseif(isset($groupPar))
 		{
 			$groupPar = str_replace(' ', '', trim(strtolower($groupPar)));
 
@@ -2192,7 +2196,7 @@ class Aauth
 			}
 		}
 
-		return false;
+		return null;
 	}
 
 	/**
@@ -2202,15 +2206,15 @@ class Aauth
 	 *
 	 * @return array
 	 * @todo this should return an object of type Group
-	 * @todo only return one type
 	 */
-	public function getGroup($groupPar)
+	public function getGroup($groupPar) : array
 	{
 		$groupModel = $this->getModel('Group');
 
-		if (! $groupId = $this->getGroupId($groupPar))
+		$groupId = $this->getGroupId($groupPar);
+		if (! isset($groupId) )
 		{
-			return false;
+			return array();
 		}
 
 		return $groupModel->asArray()->find($groupId);
@@ -2221,10 +2225,10 @@ class Aauth
 	 *
 	 * @param ?int $userId User id to get or false for current user
 	 *
-	 * @return boolean|array
-	 * @todo only return one type
+	 * @return array
+	 * @todo this should return an array of Group objects (e.g. Group[])
 	 */
-	public function listUserGroups(int $userId = null)
+	public function listUserGroups(?int $userId = null) : array
 	{
 		$userModel = $this->getModel('User');
 
@@ -2235,7 +2239,7 @@ class Aauth
 
 		if (! $userModel->existsById($userId))
 		{
-			return false;
+			return array();
 		}
 
 		$groupModel = $this->getModel('Group');
@@ -2255,10 +2259,10 @@ class Aauth
 	 * @param int $limit Limit of users to be returned [default: 10]
 	 * @param ?string $orderBy Order by MYSQL string (e.g. 'name ASC', 'email DESC')
 	 *
-	 * @return boolean|array
-	 * @todo only return one type
+	 * @return array
+	 * @todo this should return an array of Group objects (e.g. Group[])
 	 */
-	public function listUserGroupsPaginated(int $userId = null, int $limit = 10, string $orderBy = null)
+	public function listUserGroupsPaginated(?int $userId = null, int $limit = 10, string $orderBy = null) : array
 	{
 		$userModel = $this->getModel('User');
 
@@ -2269,7 +2273,7 @@ class Aauth
 
 		if (! $userModel->existsById($userId))
 		{
-			return false;
+			return array();
 		}
 
 		$groupModel = $this->getModel('Group');
@@ -2304,7 +2308,8 @@ class Aauth
 	{
 		$groupModel = $this->getModel('Group');
 
-		if (! $groupId = $this->getGroupId($groupPar))
+		$groupId = $this->getGroupId($groupPar);
+		if (! isset($groupId) )
 		{
 			return false;
 		}
@@ -2326,7 +2331,8 @@ class Aauth
 	{
 		$groupModel = $this->getModel('Group');
 
-		if (! $groupId = $this->getGroupId($groupPar))
+		$groupId = $this->getGroupId($groupPar);
+		if (! isset($groupId) )
 		{
 			return false;
 		}
@@ -2342,23 +2348,23 @@ class Aauth
 	 * @param string $key Variable Key
 	 * @param string $groupPar Group name or id
 	 *
-	 * @return boolean|string
-	 * @todo only return one type
+	 * @return ?string
 	 */
-	public function getGroupVar(string $key, string $groupPar)
+	public function getGroupVar(string $key, string $groupPar) : ?string
 	{
 		$groupModel = $this->getModel('Group');
 
-		if (! $groupId = $this->getGroupId($groupPar))
+		$groupId = $this->getGroupId($groupPar);
+		if (! isset($groupId) )
 		{
-			return false;
+			return null;
 		}
 
 		$groupVariableModel = $this->getModel('GroupVariable');
 
 		if (! $variable = $groupVariableModel->find($groupId, $key))
 		{
-			return false;
+			return null;
 		}
 
 		return $variable;
@@ -2372,16 +2378,16 @@ class Aauth
 	 * @param ?string $groupPar Group name or id
 	 *
 	 * @return array
-	 * @todo only return one type
 	 * @todo this should possibly return a GroupVar[] type
 	 */
-	public function listGroupVars(string $groupPar = null)
+	public function listGroupVars(?string $groupPar = null) : array
 	{
 		$groupModel = $this->getModel('Group');
 
-		if (! $groupId = $this->getGroupId($groupPar))
+		$groupId = $this->getGroupId($groupPar);
+		if (! isset($groupId) )
 		{
-			return false;
+			return array();
 		}
 
 		$groupVariableModel = $this->getModel('GroupVariable');
@@ -2396,17 +2402,17 @@ class Aauth
 	 *
 	 * @param ?string $groupPar Group name or id
 	 *
-	 * @return boolean|array
-	 * @todo only return one type
+	 * @return array
 	 * @todo this should possibly return a GroupVar[] type
 	 */
-	public function getGroupVarKeys(string $groupPar = null)
+	public function getGroupVarKeys(?string $groupPar = null) : array
 	{
 		$groupModel = $this->getModel('Group');
 
-		if (! $groupId = $this->getGroupId($groupPar))
+		$groupId = $this->getGroupId($groupPar);
+		if (! isset($groupId) )
 		{
-			return false;
+			return array();
 		}
 
 		$groupVariableModel = $this->getModel('GroupVariable');
@@ -2427,10 +2433,9 @@ class Aauth
 	 * @param string $name New permission name
 	 * @param string $definition Permission description [default: '']
 	 *
-	 * @return integer|boolean Permission id or false on fail
-	 * @todo only return one type
+	 * @return ?int Permission id or null on fail
 	 */
-	public function createPerm(string $name, string $definition = '')
+	public function createPerm(string $name, string $definition = '') : ?int
 	{
 		$permModel = $this->getModel('Perm');
 
@@ -2443,7 +2448,7 @@ class Aauth
 		{
 			$this->error(array_values($permModel->errors()));
 
-			return false;
+			return null;
 		}
 
 		$this->precachePerms();
@@ -2460,17 +2465,18 @@ class Aauth
 	 * @param ?string $name New permission name
 	 * @param ?string $definition Permission description
 	 *
-	 * @return bool
+	 * @return bool Success Indicator
 	 */
-	public function updatePerm($permPar, string $name = null, string $definition = null) : bool
+	public function updatePerm($permPar, ?string $name = null, ?string $definition = null) : bool
 	{
 		$permModel = $this->getModel('Perm');
 
+		$permId = $this->getPermId($permPar);
 		if (!isset($name) && !isset($definition))
 		{
 			return false;
 		}
-		else if (! $permId = $this->getPermId($permPar))
+		elseif (! isset($permId) )
 		{
 			$this->error(lang('Aauth.notFoundPerm'));
 
@@ -2503,7 +2509,7 @@ class Aauth
 	 *
 	 * @param int|string $permPar Permission id or perm name
 	 *
-	 * @return bool
+	 * @return bool Success Indicator
 	 */
 	public function deletePerm($permPar) : bool
 	{
@@ -2511,7 +2517,8 @@ class Aauth
 		$permToGroupModel = $this->getModel('PermToGroup');
 		$permToUserModel  = $this->getModel('PermToUser');
 
-		if (! $permId = $this->getPermId($permPar))
+		$permId = $this->getPermId($permPar);
+		if ( ! isset($permId) )
 		{
 			$this->error(lang('Aauth.notFoundPerm'));
 
@@ -2545,26 +2552,27 @@ class Aauth
 	 * @param int|string $permPar Permission id or perm name
 	 * @param int $userId User id to allow
 	 *
-	 * @return bool
+	 * @return bool Success Indicator
 	 */
 	public function allowUser($permPar, int $userId) : bool
 	{
 		$userModel       = $this->getModel('User');
 		$permToUserModel = $this->getModel('PermToUser');
 
-		if (! $permId = $this->getPermId($permPar))
+		$permId = $this->getPermId($permPar);
+		if (! isset($permId))
 		{
 			$this->error(lang('Aauth.notFoundPerm'));
 
 			return false;
 		}
-		else if (! $userModel->existsById($userId))
+		elseif (! $userModel->existsById($userId))
 		{
 			$this->error(lang('Aauth.notFoundUser'));
 
 			return false;
 		}
-		else if ($permToUserModel->allowed($permId, $userId))
+		elseif ($permToUserModel->allowed($permId, $userId))
 		{
 			return true;
 		}
@@ -2578,26 +2586,27 @@ class Aauth
 	 * @param int|string $permPar Permission id or perm name
 	 * @param int $userId User id to deny
 	 *
-	 * @return bool
+	 * @return bool Success Indicator
 	 */
 	public function denyUser($permPar, int $userId) : bool
 	{
 		$userModel       = $this->getModel('User');
 		$permToUserModel = $this->getModel('PermToUser');
 
-		if (! $permId = $this->getPermId($permPar))
+		$permId = $this->getPermId($permPar);
+		if (! isset($permId))
 		{
 			$this->error(lang('Aauth.notFoundPerm'));
 
 			return false;
 		}
-		else if (! $userModel->existsById($userId))
+		elseif (! $userModel->existsById($userId))
 		{
 			$this->error(lang('Aauth.notFoundUser'));
 
 			return false;
 		}
-		else if ($permToUserModel->denied($permId, $userId))
+		elseif ($permToUserModel->denied($permId, $userId))
 		{
 			return true;
 		}
@@ -2611,14 +2620,15 @@ class Aauth
 	 * @param int|string $permPar Permission id or perm name
 	 * @param int $userId User id to deny
 	 *
-	 * @return bool
+	 * @return bool Success Indicator
 	 */
 	public function removeUserPerm($permPar, int $userId) : bool
 	{
 		$userModel       = $this->getModel('User');
 		$permToUserModel = $this->getModel('PermToUser');
 
-		if (! $permId = $this->getPermId($permPar))
+		$permId = $this->getPermId($permPar);
+		if (! isset($permId))
 		{
 			$this->error(lang('Aauth.notFoundPerm'));
 
@@ -2642,19 +2652,22 @@ class Aauth
 	 * @param int|string $permPar  Permission id or perm name
 	 * @param int|string $groupPar Group id or name to allow
 	 *
-	 * @return bool
+	 * @return bool Success Indicator
 	 */
 	public function allowGroup($permPar, $groupPar) : bool
 	{
 		$permToGroupModel = $this->getModel('PermToGroup');
 
-		if (! $permId = $this->getPermId($permPar))
+		$permId = $this->getPermId($permPar);
+		if (! isset($permId))
 		{
 			$this->error(lang('Aauth.notFoundPerm'));
 
 			return false;
 		}
-		if (! $groupId = $this->getGroupId($groupPar))
+
+		$groupId = $this->getGroupId($groupPar);
+		if (! isset($groupId) )
 		{
 			$this->error(lang('Aauth.notFoundGroup'));
 
@@ -2676,19 +2689,22 @@ class Aauth
 	 * @param int|string $permPar Permission id or perm name
 	 * @param int|string $groupPar Group id or name to deny
 	 *
-	 * @return bool
+	 * @return bool Success Indicator
 	 */
 	public function denyGroup($permPar, $groupPar) : bool
 	{
 		$permToGroupModel = $this->getModel('PermToGroup');
 
-		if (! $permId = $this->getPermId($permPar))
+		$permId = $this->getPermId($permPar);
+		if (! isset($permId))
 		{
 			$this->error(lang('Aauth.notFoundPerm'));
 
 			return false;
 		}
-		if (! $groupId = $this->getGroupId($groupPar))
+
+		$groupId = $this->getGroupId($groupPar);
+		if (! isset($groupId) )
 		{
 			$this->error(lang('Aauth.notFoundGroup'));
 
@@ -2710,19 +2726,22 @@ class Aauth
 	 * @param int|string $permPar Permission id or perm name
 	 * @param int|string $groupPar Group id or name to deny
 	 *
-	 * @return bool
+	 * @return bool Success Indicator
 	 */
 	public function removeGroupPerm($permPar, $groupPar) : bool
 	{
 		$permToGroupModel = $this->getModel('PermToGroup');
 
-		if (! $permId = $this->getPermId($permPar))
+		$permId = $this->getPermId($permPar);
+		if (! isset($permId))
 		{
 			$this->error(lang('Aauth.notFoundPerm'));
 
 			return false;
 		}
-		if (! $groupId = $this->getGroupId($groupPar))
+
+		$groupId = $this->getGroupId($groupPar);
+		if (! isset($groupId) )
 		{
 			$this->error(lang('Aauth.notFoundGroup'));
 
@@ -2758,7 +2777,7 @@ class Aauth
 	 * @return array Array of perms
 	 * @todo should possibly return an Perm[] type
 	 */
-	public function listPermsPaginated(int $limit = 10, string $orderBy = null) : array
+	public function listPermsPaginated(int $limit = 10, ?string $orderBy = null) : array
 	{
 		$permModel = $this->getModel('Perm');
 
@@ -2778,10 +2797,9 @@ class Aauth
 	 *
 	 * @param int|string $permPar Permission id or name to get
 	 *
-	 * @return boolean|integer Permission id or FALSE if perm does not exist
-	 * @todo only return one type
+	 * @return ?int Permission id or null if perm does not exist
 	 */
-	public function getPermId($permPar)
+	public function getPermId($permPar) : ?int
 	{
 		if (is_numeric($permPar))
 		{
@@ -2800,7 +2818,7 @@ class Aauth
 			}
 		}
 
-		return false;
+		return null;
 	}
 
 	/**
@@ -2810,16 +2828,16 @@ class Aauth
 	 *
 	 * @param int|string $permPar Permission id or name to get
 	 *
-	 * @return int Permission id or NULL if perm does not exist
-	 * @todo only return one type
+	 * @return ?int Permission id or NULL if perm does not exist
 	 */
-	public function getPerm($permPar) : int
+	public function getPerm($permPar) : ?int
 	{
 		$permModel = $this->getModel('Perm');
 
-		if (! $permId = $this->getPermId($permPar))
+		$permId = $this->getPermId($permPar);
+		if (! isset($permId) )
 		{
-			return false;
+			return null;
 		}
 
 		return $permModel->asArray()->find($permId);
@@ -2830,14 +2848,15 @@ class Aauth
 	 *
 	 * @param int|string $groupPar Group id or name to get
 	 *
-	 * @return boolean|array
-	 * @todo only return one type
+	 * @return array List of group Permissions
+	 * @todo possibly return a list of permission objects (e.g. Perms[])
 	 */
-	public function listGroupPerms($groupPar)
+	public function listGroupPerms($groupPar) : array
 	{
-		if (! $groupId = $this->getGroupId($groupPar))
+		$groupId = $this->getGroupId($groupPar);
+		if (! isset($groupId) )
 		{
-			return false;
+			return array();
 		}
 
 		$permModel = $this->getModel('Perm');
@@ -2857,14 +2876,15 @@ class Aauth
 	 * @param int $limit Limit of users to be returned [default: 10]
 	 * @param ?string $orderBy Order by MYSQL string (e.g. 'name ASC', 'email DESC')
 	 *
-	 * @return boolean|array
-	 * @todo only return one type
+	 * @return array List of group Permissions
+	 * @todo possibly return a list of permission objects (e.g. Perms[])
 	 */
-	public function listGroupPermsPaginated($groupPar, int $limit = 10, string $orderBy = null)
+	public function listGroupPermsPaginated($groupPar, int $limit = 10, ?string $orderBy = null) : array
 	{
-		if (! $groupId = $this->getGroupId($groupPar))
+		$groupId = $this->getGroupId($groupPar);
+		if (! isset($groupId) )
 		{
-			return false;
+			return array();
 		}
 
 		$permModel = $this->getModel('Perm');
@@ -2888,19 +2908,19 @@ class Aauth
 	 *
 	 * @param ?int $userId User id
 	 *
-	 * @return boolean|array
-	 * @todo only return one type
+	 * @return array List of user Permissions
+	 * @todo possibly return a list of permission objects (e.g. Perms[])
 	 */
-	public function listUserPerms(int $userId = null)
+	public function listUserPerms(?int $userId = null) : array
 	{
 		if (!isset($userId))
 		{
 			$userId = (int) @$this->session->user['id'];
 		}
 
-		if (! $this->getUser($userId))
+		if( is_null($this->getUser($userId)) )
 		{
-			return false;
+			return array();
 		}
 
 		$permModel = $this->getModel('Perm');
@@ -2920,19 +2940,19 @@ class Aauth
 	 * @param int $limit Limit of users to be returned [default: 10]
 	 * @param ?string $orderBy Order by MYSQL string (e.g. 'name ASC', 'email DESC')
 	 *
-	 * @return boolean|array
-	 * @todo only return one type
+	 * @return array List of user Permissions
+	 * @todo possibly return a list of permission objects (e.g. Perms[])
 	 */
-	public function listUserPermsPaginated(int $userId = null, int $limit = 10, string $orderBy = null)
+	public function listUserPermsPaginated(?int $userId = null, int $limit = 10, ?string $orderBy = null) : array
 	{
-		if (! $userId)
+		if (!isset($userId))
 		{
 			$userId = (int) @$this->session->user['id'];
 		}
 
-		if (! $this->getUser($userId))
+		if ( is_null($this->getUser($userId)) )
 		{
-			return false;
+			return array();
 		}
 
 		$permModel = $this->getModel('Perm');
@@ -2940,7 +2960,7 @@ class Aauth
 		$permModel->select('id, name, definition, IF(state = 0 OR state = 1, state, -1) as state');
 		$permModel->join($this->config->dbTablePermToUser, '(' . $this->config->dbTablePerms . '.id = ' . $this->config->dbTablePermToUser . '.perm_id AND ' . $this->config->dbTablePermToUser . '.user_id = ' . $userId . ')', 'left');
 
-		if (! is_null($orderBy))
+		if (isset($orderBy))
 		{
 			$permModel->orderBy($orderBy);
 		}
@@ -3190,10 +3210,9 @@ class Aauth
 	 *
 	 * @param string $model Model name
 	 *
-	 * @return object
-	 * @todo specify object return type
+	 * @return ?Model
 	 */
-	public function getModel(string $model)
+	public function getModel(string $model) : ?Model
 	{
 		if (strpos($model, '_'))
 		{
@@ -3216,7 +3235,7 @@ class Aauth
 		}
 		else
 		{
-			return false;
+			return null;
 		}
 	}
 
@@ -3227,9 +3246,9 @@ class Aauth
 	 * @param string $name   Call name
 	 * @param array  $params Call params
 	 *
-	 * @return Model|null
+	 * @return Model
 	 */
-	public function __call(string $name, array $params)
+	public function __call(string $name, array $params) : Model
 	{
 		$config  = $this->config;
 		$session = $this->session;
@@ -3245,6 +3264,6 @@ class Aauth
 			}
 		}
 
-		return trigger_error('Call to undefined method ' . __CLASS__ . '::' . $name . '()', E_USER_ERROR);
+		trigger_error('Call to undefined method ' . __CLASS__ . '::' . $name . '()', E_USER_ERROR);
 	}
 }
