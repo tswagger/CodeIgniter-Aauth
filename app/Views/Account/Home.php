@@ -11,7 +11,7 @@
 				<b><?= lang('Account.homeLabelUsername') ?></b>
 			</div>
 			<div class="col-sm-8">
-				<?= $user['username'] ?>
+				<?= $user->username ?>
 			</div>
 		</div>
 		<div class="row">
@@ -19,7 +19,7 @@
 				<b><?= lang('Account.homeLabelEmail') ?></b>
 			</div>
 			<div class="col-sm-8">
-				<?= $user['email'] ?>
+				<?= $user->email ?>
 			</div>
 		</div>
 		<?php if (isset($providers)): ?>

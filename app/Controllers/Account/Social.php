@@ -35,7 +35,7 @@ class Social extends Controller
 	public function __construct()
 	{
 		$this->config  = new AauthConfig();
-		$this->aauth   = new Aauth();
+		$this->aauth   = Services::aauth();
 		$this->request = Services::request();
 		helper('form');
 	}

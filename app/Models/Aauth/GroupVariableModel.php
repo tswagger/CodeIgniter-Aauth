@@ -20,8 +20,8 @@ namespace App\Models\Aauth;
 
 use Config\Aauth as AauthConfig;
 use Config\Database;
+use CodeIgniter\Model;
 use CodeIgniter\Database\BaseBuilder;
-use CodeIgniter\Database\BaseConnection;
 use CodeIgniter\Database\ConnectionInterface;
 
 /**
@@ -30,8 +30,9 @@ use CodeIgniter\Database\ConnectionInterface;
  * @package CodeIgniter-Aauth
  *
  * @since 3.0.0
+ * @todo: rewrite
  */
-class GroupVariableModel
+class GroupVariableModel extends Model
 {
 
 	/**
@@ -40,13 +41,6 @@ class GroupVariableModel
 	 * @var ConnectionInterface
 	 */
 	protected $db;
-
-	/**
-	 * Query Builder object
-	 *
-	 * @var BaseBuilder
-	 */
-	protected $builder;
 
 	/**
 	 * Name of database table
@@ -61,7 +55,7 @@ class GroupVariableModel
 	 *
 	 * @var string
 	 */
-	protected $DBGroup;
+	protected $dbGroup;
 
 	/**
 	 * The format that the results should be returned as.
@@ -69,7 +63,7 @@ class GroupVariableModel
 	 *
 	 * @var string
 	 */
-	protected $returnType = 'array';
+	protected $returnType = 'App\Entities\Aauth\GroupVariable';
 
 	/**
 	 * Used by asArray and asObject to provide
@@ -82,7 +76,7 @@ class GroupVariableModel
 	/**
 	 * Aauth Config object
 	 *
-	 * @var BaseConfig
+	 * @var AauthConfig
 	 */
 	protected $config;
 
@@ -93,10 +87,11 @@ class GroupVariableModel
 	 */
 	public function __construct(?ConnectionInterface &$db = null)
 	{
+		parent::__construct();
+
 		$this->config         = new AauthConfig();
-		$this->DBGroup        = $this->config->dbProfile;
+		$this->dbGroup        = $this->config->dbProfile;
 		$this->table          = $this->config->dbTableGroupVariables;
-		$this->tempReturnType = $this->returnType;
 
 		if ($db instanceof ConnectionInterface)
 		{
@@ -104,7 +99,7 @@ class GroupVariableModel
 		}
 		else
 		{
-			$this->db = Database::connect($this->DBGroup);
+			$this->db = Database::connect($this->dbGroup);
 		}
 	}
 

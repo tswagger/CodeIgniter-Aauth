@@ -19,6 +19,7 @@
 namespace App\Models\Aauth;
 
 use CodeIgniter\Model;
+use App\Entities\Aauth\Group;
 use CodeIgniter\Database\ConnectionInterface;
 use CodeIgniter\Validation\ValidationInterface;
 use Config\Aauth as AauthConfig;
@@ -32,13 +33,19 @@ use Config\Aauth as AauthConfig;
  */
 class GroupModel extends Model
 {
+
 	/**
-	 * If true, will set created_at, and updated_at
-	 * values during insert and update routines.
-	 *
-	 * @var bool
+	 * @var AauthConfig
 	 */
-	protected $useTimestamps = true;
+	private AauthConfig $config;
+
+	/**
+	 * The format that the results should be returned as.
+	 * Will be overridden if the as* methods are used.
+	 *
+	 * @var string
+	 */
+	protected $returnType = 'App\Entities\Aauth\Group';
 
 	/**
 	 * An array of field names that are allowed
@@ -46,33 +53,36 @@ class GroupModel extends Model
 	 *
 	 * @var array
 	 */
-	protected $allowedFields = array(
-		'name',
-		'definition',
-	);
+	protected $allowedFields = ['name', 'definition'];
+
+	/**
+	 * If true, will set created_at, and updated_at
+	 * values during insert and update routines.
+	 *
+	 * @var boolean
+	 */
+	protected $useTimestamps = true;
+
+	/**
+	 * Use soft delete
+	 * @var bool $useSoftDeletes
+	 */
+	protected $useSoftDeletes = true;
+
 
 	/**
 	 * Constructor
 	 *
 	 * @param ?ConnectionInterface $db Connection Interface
 	 * @param ?ValidationInterface $validation Validation Interface
-	 * @param ?\Config\Aauth $config Config Object
 	 */
-	public function __construct(?ConnectionInterface &$db = null, ?ValidationInterface $validation = null, ?\Config\Aauth $config = null)
+	public function __construct(?ConnectionInterface &$db = null, ?ValidationInterface $validation = null)
 	{
-		if (is_null($config))
-		{
-			$config = new AauthConfig();
-		}
+		$this->config  = new AauthConfig();
 
-		$this->config  = $config;
-		$this->DBGroup = $this->config->dbProfile;
-
-		parent::__construct();
+		parent::__construct($db, $validation);
 
 		$this->table              = $this->config->dbTableGroups;
-		$this->tempUseSoftDeletes = $this->config->dbSoftDeleteGroups;
-		$this->tempReturnType     = $this->config->dbReturnType;
 
 		$this->validationRules['name'] = 'required|is_unique[' . $this->table . '.name,id,{id}]';
 
@@ -93,15 +103,10 @@ class GroupModel extends Model
 	 */
 	public function existsById(int $groupId) : bool
 	{
-		$builder = $this->builder();
+		$count = $this->where($this->primaryKey, $groupId)
+			->countAllResults();
 
-		if ($this->tempUseSoftDeletes === true)
-		{
-			$builder->where($this->deletedField, null);
-		}
-
-		$builder->where($this->primaryKey, $groupId);
-		return ($builder->countAllResults() ? true : false);
+		return ($count > 0);
 	}
 
 	/**
@@ -109,26 +114,12 @@ class GroupModel extends Model
 	 *
 	 * @param string $groupName Group name
 	 *
-	 * @return bool|object
-	 * @todo only return one type
+	 * @return ?Group|object
 	 */
-	public function getByName(string $groupName) : bool
+	public function getByName(string $groupName) : ?Group
 	{
-		$builder = $this->builder();
-
-		if ($this->tempUseSoftDeletes === true)
-		{
-			$builder->where($this->deletedField, null);
-		}
-
-		$builder->where('name', $groupName);
-
-		if (! $group = $builder->get()->getFirstRow($this->tempReturnType))
-		{
-			return false;
-		}
-
-		return $group;
+		return $this->where('name', $groupName)
+			->first();
 	}
 
 }

@@ -30,8 +30,9 @@ use CodeIgniter\Database\ConnectionInterface;
  * @package CodeIgniter-Aauth
  *
  * @since 3.0.0
+ * @todo come back to
  */
-class UserSessionModel
+class UserSessionModel extends Model
 {
 
 	/**
@@ -189,61 +190,4 @@ class UserSessionModel
 		return $row;
 	}
 
-	/**
-	 * Provides a shared instance of the Query Builder.
-	 *
-	 * @param ?string $table Table name
-	 *
-	 * @return BaseBuilder
-	 */
-	protected function builder(?string $table = null) : BaseBuilder
-	{
-		if ($this->builder instanceof BaseBuilder)
-		{
-			return $this->builder;
-		}
-
-		$table = empty($table) ? $this->table : $table;
-
-		$this->builder = $this->db->table($table);
-
-		return $this->builder;
-	}
-
-	/**
-	 * Provides direct access to method in the builder (if available)
-	 * and the database connection.
-	 *
-	 * @param string $name Name
-	 * @param array $params Params
-	 *
-	 * @return ?UserSessionModel
-	 */
-	public function __call(string $name, array $params) : ?UserSessionModel
-	{
-		$result = null;
-
-		if (method_exists($this->db, $name))
-		{
-			$result = $this->db->$name(...$params);
-		}
-		elseif (method_exists($builder = $this->builder(), $name))
-		{
-			$result = $builder->$name(...$params);
-		}
-
-		// Don't return the builder object unless specifically requested
-		//, since that will interrupt the usability flow
-		// and break intermingling of model and builder methods.
-		if ($name !== 'builder' && empty($result))
-		{
-			return $result;
-		}
-		if ($name !== 'builder' && ! $result instanceof BaseBuilder)
-		{
-			return $result;
-		}
-
-		return $this;
-	}
 }

@@ -30,6 +30,7 @@ use CodeIgniter\Database\ConnectionInterface;
  * @package CodeIgniter-Aauth
  *
  * @since 3.0.0
+ * @todo come back to
  */
 class PermToGroupModel
 {
@@ -40,13 +41,6 @@ class PermToGroupModel
 	 * @var ConnectionInterface
 	 */
 	protected $db;
-
-	/**
-	 * Query Builder object
-	 *
-	 * @var BaseBuilder
-	 */
-	protected $builder;
 
 	/**
 	 * Name of database table
@@ -66,7 +60,7 @@ class PermToGroupModel
 	/**
 	 * Aauth Config object
 	 *
-	 * @var BaseConfig
+	 * @var AauthConfig
 	 */
 	protected $config;
 
@@ -97,11 +91,12 @@ class PermToGroupModel
 	 * @param int $groupId Group Id
 	 * @param ?int $state State (0 = denied, 1 = allowed)
 	 *
-	 * @return ?array
+	 * @return array
 	 */
-	public function findAllByGroupId(int $groupId, ?int $state = null) : ?array
+	public function findAllByGroupId(int $groupId, ?int $state = null): array
 	{
-		$builder = $this->builder();
+		$builder = $this->db->table($this->table);
+
 		$builder->where('group_id', $groupId);
 
 		if (isset($state))
@@ -110,11 +105,11 @@ class PermToGroupModel
 		}
 		else
 		{
-			$builder->select('perm_id');
-			$builder->where('state', $state);
+			$builder->select('perm_id')
+				->where('state', $state);
 		}
 
-		return $builder->get()->getResult('array');
+		return $builder->get()->getResult();
 	}
 
 	/**
@@ -122,15 +117,16 @@ class PermToGroupModel
 	 *
 	 * @param int $permId Perm Id
 	 *
-	 * @return ?array
+	 * @return array
 	 */
-	public function findAllByPermId(int $permId) : ?array
+	public function findAllByPermId(int $permId): array
 	{
-		$builder = $this->builder();
-		$builder->select('group_id, state');
-		$builder->where('perm_id', $permId);
+		$builder = $this->db->table($this->table);
 
-		return $builder->get()->getResult('array');
+		$builder->select('group_id, state')
+			->where('perm_id', $permId);
+
+		return $builder->get()->getResult();
 	}
 
 	/**
@@ -141,15 +137,15 @@ class PermToGroupModel
 	 *
 	 * @return bool
 	 */
-	public function allowed(int $permId, int $groupId) : bool
+	public function allowed(int $permId, int $groupId): bool
 	{
-		$builder = $this->builder();
+		$builder = $this->db->table($this->table);
 
-		$builder->where('perm_id', $permId);
-		$builder->where('group_id', $groupId);
-		$builder->where('state', 1);
+		$builder->where('perm_id', $permId)
+			->where('group_id', $groupId)
+			->where('state', 1);
 
-		return ($builder->countAllResults() ? true : false);
+		return $builder->countAllResults() > 0;
 	}
 
 	/**
@@ -162,13 +158,13 @@ class PermToGroupModel
 	 */
 	public function denied(int $permId, int $groupId) : bool
 	{
-		$builder = $this->builder();
+		$builder = $this->db->table($this->table);
 
-		$builder->where('perm_id', $permId);
-		$builder->where('group_id', $groupId);
-		$builder->where('state', 0);
+		$builder->where('perm_id', $permId)
+			->where('group_id', $groupId)
+			->where('state', 0);
 
-		return ($builder->countAllResults() ? true : false);
+		return $builder->countAllResults() > 0;
 	}
 
 	/**
@@ -181,94 +177,66 @@ class PermToGroupModel
 	 * @param int $state State Int (0 deny, 1 allow) [default: 1]
 	 *
 	 * @return bool
-	 * @todo only return one type
 	 */
-	public function save(int $permId, int $groupId, int $state = 1) : bool
+	public function save(int $permId, int $groupId, int $state = 1): bool
 	{
-		$builder = $this->builder();
-		$builder->where('perm_id', $permId);
-		$builder->where('group_id', $groupId);
+		$builder = $this->db->table($this->table);
 
-		if (! $row = $builder->get()->getFirstRow())
+		$builder->where('perm_id', $permId)
+			->where('group_id', $groupId);
+
+		$row = $builder->get()->getFirstRow();
+
+		if (! isset($row))
 		{
 			$data['perm_id']  = $permId;
 			$data['group_id'] = $groupId;
 			$data['state']    = $state;
 
-			return $builder->insert($data)->resultID;
+			$builder->insert($data);
+		}
+		else {
+			$data['state'] = $state;
+
+			$builder->update($data, ['perm_id' => $permId, 'group_id' => $groupId]);
 		}
 
-		$data['state'] = $state;
-
-		return $builder->update($data, ['perm_id' => $permId, 'group_id' => $groupId]);
+		return $this->db->affectedRows() > 0;
 	}
 
 	/**
 	 * Deletes by Perm Id and Group Id
 	 *
-	 * @param int $permId Perm Id
-	 * @param int $groupId Group Id
+	 * At least one parameter is required. Method delete all
+	 * Permission to Group entries that match the parameters
+	 * passed in
 	 *
-	 * @return bool
+	 * @param ?int $permId Perm Id [default: null]
+	 * @param ?int $groupId Group Id [default: null]
+	 *
+	 * @return bool True if any entries are deleted. False if no entries or if method failed.
 	 */
-	public function delete(int $permId, int $groupId) : bool
+	public function delete(?int $permId = null, ?int $groupId = null): bool
 	{
-		$builder = $this->builder();
-		$builder->where('perm_id', $permId);
-		$builder->where('group_id', $groupId);
-
-		return $builder->delete()->resultID;
-	}
-
-	/**
-	 * Deletes all by Perm Id
-	 *
-	 * @param int $permId Perm Id
-	 *
-	 * @return bool
-	 */
-	public function deleteAllByPermId(int $permId) : bool
-	{
-		$builder = $this->builder();
-		$builder->where('perm_id', $permId);
-
-		return $builder->delete()->resultID;
-	}
-
-	/**
-	 * Deletes all by Group Id
-	 *
-	 * @param int $groupId Group Id
-	 *
-	 * @return bool
-	 */
-	public function deleteAllByGroupId(int $groupId) : bool
-	{
-		$builder = $this->builder();
-		$builder->where('group_id', $groupId);
-
-		return $builder->delete()->resultID;
-	}
-
-	/**
-	 * Provides a shared instance of the Query Builder.
-	 *
-	 * @param ?string $table Table Name
-	 *
-	 * @return BaseBuilder
-	 */
-	protected function builder(?string $table = null) : BaseBuilder
-	{
-		if ($this->builder instanceof BaseBuilder)
+		// at least one parameter is required
+		if(! isset($permId) && ! isset($groupId))
 		{
-			return $this->builder;
+			return false;
 		}
 
-		$table = empty($table) ? $this->table : $table;
+		$builder = $this->db->table($this->table);
 
-		$this->builder = $this->db->table($table);
+		if(isset($permId))
+		{
+			$builder->where('perm_id', $permId);
+		}
+		if(isset($groupId))
+		{
+			$builder->where('group_id', $groupId);
+		}
 
-		return $this->builder;
+		$builder->delete();
+
+		return $this->db->affectedRows() > 0;
 	}
-
 }

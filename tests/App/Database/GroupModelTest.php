@@ -2,7 +2,9 @@
 
 use CodeIgniter\Test\CIDatabaseTestCase;
 use App\Models\Aauth\GroupModel;
+use App\Entities\Aauth\Group;
 
+// Updated v4
 class GroupModelTest extends CIDatabaseTestCase
 {
 	protected $refresh = true;
@@ -28,7 +30,8 @@ class GroupModelTest extends CIDatabaseTestCase
 
 	public function testGetByName()
 	{
-		$this->assertEquals(1, $this->model->getByName('admin')['id']);
-		$this->assertFalse($this->model->getByName('test_group'));
+		$group = Group::type($this->model->getByName('admin'));
+		$this->assertEquals(1, $group->id);
+		$this->assertNull($this->model->getByName('test_group'));
 	}
 }

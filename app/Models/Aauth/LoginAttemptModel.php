@@ -18,12 +18,17 @@
 
 namespace App\Models\Aauth;
 
+use CodeIgniter\HTTP\Response;
 use Config\Aauth as AauthConfig;
+use CodeIgniter\Model;
 use Config\Database;
 use Config\Services;
 use CodeIgniter\Database\BaseBuilder;
 use CodeIgniter\Database\BaseConnection;
 use CodeIgniter\Database\ConnectionInterface;
+
+
+
 
 /**
  * Login Attempt caseModel
@@ -32,7 +37,7 @@ use CodeIgniter\Database\ConnectionInterface;
  *
  * @since 3.0.0
  */
-class LoginAttemptModel
+class LoginAttemptModel extends Model
 {
 
 	/**
@@ -57,6 +62,14 @@ class LoginAttemptModel
 	protected $table;
 
 	/**
+	 * The format that the results should be returned as.
+	 * Will be overridden if the as* methods are used.
+	 *
+	 * @var string
+	 */
+	protected $returnType = 'App\Entities\Aauth\LoginAttempt';
+
+	/**
 	 * The Database connection group that
 	 * should be instantiated.
 	 *
@@ -67,7 +80,7 @@ class LoginAttemptModel
 	/**
 	 * Aauth Config object
 	 *
-	 * @var BaseConfig
+	 * @var AauthConfig
 	 */
 	protected $config;
 
@@ -76,10 +89,12 @@ class LoginAttemptModel
 	 *
 	 * @param ?ConnectionInterface $db Database connection
 	 * @param ?\Config\Aauth $config Config Object
-	 * @param ?\CodeIgniter\HTTP\Response $response Response Class
+	 * @param ?Response $response Response Class
 	 */
-	public function __construct(?ConnectionInterface &$db = null, ?\Config\Aauth $config = null, ?\CodeIgniter\HTTP\Response $response = null)
+	public function __construct(?ConnectionInterface &$db = null, ?\Config\Aauth $config = null, ?Response $response = null)
 	{
+		parent::__construct();
+
 		if (!isset($config))
 		{
 			$config = new AauthConfig();
@@ -95,15 +110,6 @@ class LoginAttemptModel
 		$this->DBGroup  = $this->config->dbProfile;
 		$this->table    = $this->config->dbTableLoginAttempts;
 
-		if ($db instanceof ConnectionInterface)
-		{
-			$this->db = & $db;
-		}
-		else
-		{
-			$this->db = Database::connect($this->DBGroup);
-		}
-
 		$this->request = Services::request();
 	}
 
@@ -113,8 +119,9 @@ class LoginAttemptModel
 	 * Get login attempt based on time and ip address
 	 *
 	 * @return int
+	 * @todo: this should return a LoginAttempt Object
 	 */
-	public function find() : int
+	public function findLogin(): int
 	{
 		if ($this->config->loginAttemptCookie)
 		{
@@ -149,20 +156,20 @@ class LoginAttemptModel
 	 * Inserts or Updates Login Attempt
 	 *
 	 * @return bool
+	 * @since 4.0.0
 	 */
-	public function save() : bool
+	public function saveAttempt() : bool
 	{
 		if ($this->config->loginAttemptCookie)
 		{
 			helper('cookie');
 			$cookieName = $this->config->loginAttemptCookie === true ? 'logins' : $this->config->loginAttemptCookie;
-			$expire     = strtotime($this->config->loginAttemptLimitTimePeriod) - strtotime('now');
+			$expire = strtotime($this->config->loginAttemptLimitTimePeriod) - strtotime('now');
 
 			if ($cookie = $this->response->getCookie($cookieName))
 			{
 				$this->response->deleteCookie($cookieName);
-				(int) $cookie['value']++;
-				$this->response->setCookie($cookieName, $cookie['value'], $expire);
+				$this->response->setCookie($cookieName, ++$cookie['value'], $expire);
 
 				if ($cookie['value'] >= $this->config->loginAttemptLimit)
 				{
@@ -186,6 +193,7 @@ class LoginAttemptModel
 			$agent     = $this->request->getUserAgent();
 			$userAgent = md5($agent->getBrowser() . ' - ' . $agent->getVersion() . ' - ' . $agent->getPlatform());
 			$builder   = $this->builder();
+
 			$builder->where('user_agent', $userAgent);
 			$builder->where('ip_address', $ipAddress);
 			$builder->where('updated_at >=', date('Y-m-d H:i:s', strtotime('-' . $this->config->loginAttemptLimitTimePeriod)));
@@ -228,7 +236,7 @@ class LoginAttemptModel
 	 *
 	 * @return bool
 	 */
-	public function delete() : bool
+	public function deleteAttempt() : bool
 	{
 		if ($this->config->loginAttemptCookie)
 		{
@@ -247,27 +255,6 @@ class LoginAttemptModel
 		}
 
 		return true;
-	}
-
-	/**
-	 * Provides a shared instance of the Query Builder.
-	 *
-	 * @param ?string $table Table name
-	 *
-	 * @return BaseBuilder
-	 */
-	protected function builder(?string $table = null) : BaseBuilder
-	{
-		if ($this->builder instanceof BaseBuilder)
-		{
-			return $this->builder;
-		}
-
-		$table = empty($table) ? $this->table : $table;
-
-		$this->builder = $this->db->table($table);
-
-		return $this->builder;
 	}
 
 }

@@ -125,9 +125,9 @@ class Social extends \App\Libraries\Aauth
 		$session->remove($this->storageHybridAuth);
 
 		$userVariableModel = $this->getModel('UserVariable');
-		$userVariableModel->delete($userId, 'social_storage', true);
+		$userVariableModel->deleteVar($userId, 'social_storage', true);
 
-		return $userVariableModel->delete($userId, 'social_' . strtolower($provider), true);
+		return $userVariableModel->deleteVar($userId, 'social_' . strtolower($provider), true);
 	}
 
 	/**
@@ -142,7 +142,7 @@ class Social extends \App\Libraries\Aauth
 		$userVariableModel = $this->getModel('UserVariable');
 		$providers         = $this->getProviders();
 
-		if ($storedData = $userVariableModel->find($userId, 'social_storage', true))
+		if ($storedData = $userVariableModel->getValue($userId, 'social_storage', true))
 		{
 			$storedData = json_decode($storedData, true);
 
@@ -281,6 +281,6 @@ class Social extends \App\Libraries\Aauth
 	{
 		$userVariableModel = $this->getModel('UserVariable');
 
-		return $userVariableModel->save($userId, 'social_' . strtolower($provider), $identifier, true);
+		return $userVariableModel->saveVar($userId, 'social_' . strtolower($provider), $identifier, true);
 	}
 }

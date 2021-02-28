@@ -32,7 +32,7 @@ if (! function_exists('is_loggedin'))
 	 */
 	function is_loggedin()
 	{
-		$aauth = new Aauth();
+		$aauth = \Config\Services::aauth();
 		return $aauth->isLoggedIn();
 	}
 }
@@ -48,7 +48,7 @@ if (! function_exists('is_admin'))
 	 */
 	function is_admin(int $userId = null)
 	{
-		$aauth = new Aauth();
+		$aauth = \Config\Services::aauth();
 		return $aauth->isAdmin($userId);
 	}
 }
@@ -65,7 +65,7 @@ if (! function_exists('is_member'))
 	 */
 	function is_member($groupPar, int $userId = null)
 	{
-		$aauth = new Aauth();
+		$aauth = \Config\Services::aauth();
 
 		return $aauth->isMember($groupPar, $userId);
 	}
@@ -83,7 +83,7 @@ if (! function_exists('is_allowed'))
 	 */
 	function is_allowed($permPar, int $userId = null)
 	{
-		$aauth = new Aauth();
+		$aauth = \Config\Services::aauth();
 
 		return $aauth->isAllowed($permPar, $userId);
 	}
@@ -101,7 +101,7 @@ if (! function_exists('is_denied'))
 	 */
 	function is_denied($permPar, int $userId = null)
 	{
-		$aauth = new Aauth();
+		$aauth = \Config\Services::aauth();
 
 		return $aauth->isDenied($permPar, $userId);
 	}
@@ -118,7 +118,7 @@ if (! function_exists('get_subgroups'))
 	 */
 	function get_subgroups($groupPar)
 	{
-		$aauth = new Aauth();
+		$aauth = \Config\Services::aauth();
 
 		return $aauth->getSubgroups($groupPar);
 	}
@@ -135,7 +135,7 @@ if (! function_exists('get_user_perms'))
 	 */
 	function get_user_groups(int $userId = null)
 	{
-		$aauth = new Aauth();
+		$aauth = \Config\Services::aauth();
 
 		return $aauth->getUserGroups($userId);
 	}
@@ -153,7 +153,7 @@ if (! function_exists('get_user_perms'))
 	 */
 	function get_user_perms(int $userId = null, int $state = null)
 	{
-		$aauth = new Aauth();
+		$aauth = \Config\Services::aauth();
 
 		return $aauth->getUserPerms($userId, $state);
 	}
@@ -171,7 +171,7 @@ if (! function_exists('get_group_perms'))
 	 */
 	function get_group_perms($groupPar, int $state = null)
 	{
-		$aauth = new Aauth();
+		$aauth = \Config\Services::aauth();
 
 		return $aauth->getGroupPerms($groupPar, $state);
 	}

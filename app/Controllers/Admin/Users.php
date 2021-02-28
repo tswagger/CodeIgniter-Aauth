@@ -41,7 +41,7 @@ class Users extends Controller
 			return service('response')->redirect('/');
 		}
 
-		$this->aauth   = new Aauth();
+		$this->aauth   = Services::aauth();
 		$this->config  = new AauthConfig();
 		$this->request = Services::request();
 		helper('form');

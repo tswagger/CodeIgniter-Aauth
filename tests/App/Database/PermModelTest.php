@@ -1,9 +1,11 @@
 <?php namespace App\Database;
 
+use App\Entities\Aauth\Permission;
 use Config\Aauth as AauthConfig;
 use CodeIgniter\Test\CIDatabaseTestCase;
 use App\Models\Aauth\PermModel;
 
+// updated v4
 class PermModelTest extends CIDatabaseTestCase
 {
 	protected $refresh = true;
@@ -41,7 +43,8 @@ class PermModelTest extends CIDatabaseTestCase
 			'definition' => 'Test Perm 1',
 		]);
 
-		$this->assertEquals(1, $this->model->getByName('testPerm1')['id']);
-		$this->assertFalse($this->model->getByName('testPerm99'));
+		$permission = Permission::type($this->model->getByName('testPerm1'));
+		$this->assertEquals(1, $permission->id);
+		$this->assertNull($this->model->getByName('testPerm99'));
 	}
 }

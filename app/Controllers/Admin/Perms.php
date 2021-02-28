@@ -40,7 +40,7 @@ class Perms extends Controller
 			return service('response')->redirect('/');
 		}
 
-		$this->aauth   = new Aauth();
+		$this->aauth   = Services::aauth();
 		$this->request = Services::request();
 		helper('form');
 	}

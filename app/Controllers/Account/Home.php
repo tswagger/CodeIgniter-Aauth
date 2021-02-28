@@ -21,6 +21,7 @@ use CodeIgniter\Controller;
 use App\Libraries\Aauth;
 use Config\Aauth as AauthConfig;
 use App\Models\Aauth\UserModel;
+use Config\Services;
 
 /**
  * Aauth Accont/Home Controller
@@ -34,7 +35,7 @@ class Home extends Controller
 	 */
 	public function __construct()
 	{
-		$this->aauth  = new Aauth();
+		$this->aauth  = Services::aauth();
 		$this->config = new AauthConfig();
 		helper('aauth');
 

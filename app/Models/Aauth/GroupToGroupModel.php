@@ -20,8 +20,6 @@ namespace App\Models\Aauth;
 
 use Config\Aauth as AauthConfig;
 use Config\Database;
-use CodeIgniter\Database\BaseBuilder;
-use CodeIgniter\Database\BaseConnection;
 use CodeIgniter\Database\ConnectionInterface;
 
 /**
@@ -42,13 +40,6 @@ class GroupToGroupModel
 	protected $db;
 
 	/**
-	 * Query Builder object
-	 *
-	 * @var BaseBuilder
-	 */
-	protected $builder;
-
-	/**
 	 * Name of database table
 	 *
 	 * @var string
@@ -66,7 +57,7 @@ class GroupToGroupModel
 	/**
 	 * Aauth Config object
 	 *
-	 * @var BaseConfig
+	 * @var AauthConfig
 	 */
 	protected $config;
 
@@ -96,15 +87,15 @@ class GroupToGroupModel
 	 *
 	 * @param int $subgroupId Subgroup Id
 	 *
-	 * @return ?array
+	 * @return array
 	 */
-	public function findAllBySubgroupId(int $subgroupId) : ?array
+	public function findAllBySubgroupId(int $subgroupId): array
 	{
-		$builder = $this->builder();
-		$builder->select('group_id');
-		$builder->where('subgroup_id', $subgroupId);
+		$builder = $this->db->table($this->table);
+		$builder->select('group_id')
+			->where('subgroup_id', $subgroupId);
 
-		return $builder->get()->getResult('array');
+		return $builder->get()->getResult();
 	}
 
 	/**
@@ -112,15 +103,15 @@ class GroupToGroupModel
 	 *
 	 * @param int $groupId Group Id
 	 *
-	 * @return ?array
+	 * @return array
 	 */
-	public function findAllByGroupId(int $groupId) : ?array
+	public function findAllByGroupId(int $groupId): array
 	{
-		$builder = $this->builder();
-		$builder->select('subgroup_id');
-		$builder->where('group_id', $groupId);
+		$builder = $this->db->table($this->table);
+		$builder->select('subgroup_id')
+			->where('group_id', $groupId);
 
-		return $builder->get()->getResult('array');
+		return $builder->get()->getResult();
 	}
 
 	/**
@@ -131,14 +122,15 @@ class GroupToGroupModel
 	 *
 	 * @return bool
 	 */
-	public function exists(int $groupId, int $subgroupId) : bool
+	public function exists(int $groupId, int $subgroupId): bool
 	{
-		$builder = $this->builder();
+		$builder = $this->db->table($this->table);
 
-		$builder->where('group_id', $groupId);
-		$builder->where('subgroup_id', $subgroupId);
+		$count = $builder->where('group_id', $groupId)
+			->where('subgroup_id', $subgroupId)
+			->countAllResults();
 
-		return ($builder->countAllResults() ? true : false);
+		return $count > 0;
 	}
 
 	/**
@@ -149,14 +141,18 @@ class GroupToGroupModel
 	 *
 	 * @return bool
 	 */
-	public function insert(int $groupId, int $subgroupId) : bool
+	public function insert(int $groupId, int $subgroupId): bool
 	{
-		$builder = $this->builder();
+		$builder = $this->db->table($this->table);
 
-		$data['group_id']    = $groupId;
-		$data['subgroup_id'] = $subgroupId;
+		$data = [
+			'group_id' => $groupId,
+			'subgroup_id' => $subgroupId
+		];
 
-		return (bool) $builder->insert($data)->resultID;
+		$builder->insert($data);
+
+		return $this->db->affectedRows() > 0;
 	}
 
 	/**
@@ -167,13 +163,15 @@ class GroupToGroupModel
 	 *
 	 * @return bool
 	 */
-	public function delete(int $groupId, int $subgroupId) : bool
+	public function delete(int $groupId, int $subgroupId): bool
 	{
-		$builder = $this->builder();
-		$builder->where('group_id', $groupId);
-		$builder->where('subgroup_id', $subgroupId);
+		$builder = $this->db->table($this->table);
+		$builder->where('group_id', $groupId)
+			->where('subgroup_id', $subgroupId);
 
-		return $builder->delete()->resultID;
+		$builder->delete();
+
+		return $this->db->affectedRows() > 0;
 	}
 
 	/**
@@ -183,12 +181,14 @@ class GroupToGroupModel
 	 *
 	 * @return bool
 	 */
-	public function deleteAllByGroupId(int $groupId) : bool
+	public function deleteAllByGroupId(int $groupId): bool
 	{
-		$builder = $this->builder();
+		$builder = $this->db->table($this->table);
 		$builder->where('group_id', $groupId);
 
-		return $builder->delete()->resultID;
+		$builder->delete();
+
+		return $this->db->affectedRows() > 0;
 	}
 
 	/**
@@ -198,33 +198,14 @@ class GroupToGroupModel
 	 *
 	 * @return bool
 	 */
-	public function deleteAllBySubgroupId(int $subgroupId) : bool
+	public function deleteAllBySubgroupId(int $subgroupId): bool
 	{
-		$builder = $this->builder();
+		$builder = $this->db->table($this->table);
 		$builder->where('subgroup_id', $subgroupId);
 
-		return $builder->delete()->resultID;
-	}
+		$builder->delete();
 
-	/**
-	 * Provides a shared instance of the Query Builder.
-	 *
-	 * @param ?string $table Table Name
-	 *
-	 * @return BaseBuilder
-	 */
-	protected function builder(?string $table = null) : BaseBuilder
-	{
-		if ($this->builder instanceof BaseBuilder)
-		{
-			return $this->builder;
-		}
-
-		$table = empty($table) ? $this->table : $table;
-
-		$this->builder = $this->db->table($table);
-
-		return $this->builder;
+		return $this->db->affectedRows();
 	}
 
 }

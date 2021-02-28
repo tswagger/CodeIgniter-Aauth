@@ -41,12 +41,6 @@ class PermToUserModel
 	 */
 	protected $db;
 
-	/**
-	 * Query Builder object
-	 *
-	 * @var BaseBuilder
-	 */
-	protected $builder;
 
 	/**
 	 * Name of database table
@@ -66,7 +60,7 @@ class PermToUserModel
 	/**
 	 * Aauth Config object
 	 *
-	 * @var BaseConfig
+	 * @var AauthConfig
 	 */
 	protected $config;
 
@@ -97,11 +91,11 @@ class PermToUserModel
 	 * @param int $userId User Id
 	 * @param ?int $state Optional State (0 = denied, 1 = allowed)
 	 *
-	 * @return ?array
+	 * @return array
 	 */
-	public function findAllByUserId(int $userId, ?int $state = null) : ?array
+	public function findAllByUserId(int $userId, ?int $state = null): array
 	{
-		$builder = $this->builder();
+		$builder = $this->db->table($this->table);
 		$builder->where('user_id', $userId);
 
 		if (isset($state))
@@ -114,7 +108,8 @@ class PermToUserModel
 			$builder->where('state', $state);
 		}
 
-		return $builder->get()->getResult('array');
+		return $builder->get()->getResult();
+
 	}
 
 	/**
@@ -122,15 +117,16 @@ class PermToUserModel
 	 *
 	 * @param int $permId Perm Id
 	 *
-	 * @return ?array
+	 * @return array
 	 */
-	public function findAllByPermId(int $permId) : ?array
+	public function findAllByPermId(int $permId): array
 	{
-		$builder = $this->builder();
-		$builder->select('user_id, state');
-		$builder->where('perm_id', $permId);
+		$builder = $this->db->table($this->table);
 
-		return $builder->get()->getResult('array');
+		$builder->select('user_id, state')
+			->where('perm_id', $permId);
+
+		return $builder->get()->getResult();
 	}
 
 	/**
@@ -141,15 +137,15 @@ class PermToUserModel
 	 *
 	 * @return bool
 	 */
-	public function allowed(int $permId, int $userId) : bool
+	public function allowed(int $permId, int $userId): bool
 	{
-		$builder = $this->builder();
+		$builder = $this->db->table($this->table);
 
-		$builder->where('perm_id', $permId);
-		$builder->where('user_id', $userId);
-		$builder->where('state', 1);
+		$builder->where('perm_id', $permId)
+			->where('user_id', $userId)
+			->where('state', 1);
 
-		return ($builder->countAllResults() ? true : false);
+		return $builder->countAllResults() > 0;
 	}
 
 	/**
@@ -160,15 +156,15 @@ class PermToUserModel
 	 *
 	 * @return bool
 	 */
-	public function denied(int $permId, int $userId) : bool
+	public function denied(int $permId, int $userId): bool
 	{
-		$builder = $this->builder();
+		$builder = $this->db->table($this->table);
 
-		$builder->where('perm_id', $permId);
-		$builder->where('user_id', $userId);
-		$builder->where('state', 0);
+		$builder->where('perm_id', $permId)
+			->where('user_id', $userId)
+			->where('state', 0);
 
-		return ($builder->countAllResults() ? true : false);
+		return $builder->countAllResults() > 0;
 	}
 
 	/**
@@ -181,94 +177,66 @@ class PermToUserModel
 	 * @param int $state State Int (0 deny, 1 allow) [default: 1]
 	 *
 	 * @return bool
-	 * @todo only return one type
 	 */
-	public function save(int $permId, int $userId, int $state = 1) : bool
+	public function save(int $permId, int $userId, int $state = 1): bool
 	{
-		$builder = $this->builder();
-		$builder->where('perm_id', $permId);
-		$builder->where('user_id', $userId);
+		$builder = $this->db->table($this->table);
+		$builder->where('perm_id', $permId)
+			->where('user_id', $userId);
 
-		if (! $row = $builder->get()->getFirstRow())
+		$row = $builder->get()->getFirstRow();
+
+		if (! isset($row))
 		{
 			$data['perm_id'] = $permId;
 			$data['user_id'] = $userId;
 			$data['state']   = $state;
 
-			return $builder->insert($data)->resultID;
+			$builder->insert($data)->resultID;
+		}
+		else
+		{
+			$data['state'] = $state;
+
+			$builder->update($data, ['perm_id' => $permId, 'user_id' => $userId]);
 		}
 
-		$data['state'] = $state;
-
-		return $builder->update($data, ['perm_id' => $permId, 'user_id' => $userId]);
+		return $this->db->affectedRows() > 0;
 	}
 
 	/**
 	 * Deletes by Perm Id and User Id
 	 *
-	 * @param int $permId Perm Id
-	 * @param int $userId User Id
+	 * At least one parameter is required.  If only one parameter
+	 * is given the method will delete all by that parameter.
+	 *
+	 * Example: delete(null, 5) will delete all permissions for User ID 5
+	 *
+	 * @param ?int $permId Permission Id [default: null]
+	 * @param ?int $userId User Id [default: null]
 	 *
 	 * @return bool
 	 */
-	public function delete(int $permId, int $userId) : bool
+	public function delete(?int $permId = null, ?int $userId = null): bool
 	{
-		$builder = $this->builder();
-		$builder->where('perm_id', $permId);
-		$builder->where('user_id', $userId);
-
-		return $builder->delete()->resultID;
-	}
-
-	/**
-	 * Deletes all by Perm Id
-	 *
-	 * @param int $permId Perm Id
-	 *
-	 * @return bool
-	 */
-	public function deleteAllByPermId(int $permId) : bool
-	{
-		$builder = $this->builder();
-		$builder->where('perm_id', $permId);
-
-		return $builder->delete()->resultID;
-	}
-
-	/**
-	 * Deletes all by User Id
-	 *
-	 * @param int $userId User Id
-	 *
-	 * @return bool
-	 */
-	public function deleteAllByUserId(int $userId) : bool
-	{
-		$builder = $this->builder();
-		$builder->where('user_id', $userId);
-
-		return $builder->delete()->resultID;
-	}
-
-	/**
-	 * Provides a shared instance of the Query Builder.
-	 *
-	 * @param ?string $table Table Name
-	 *
-	 * @return BaseBuilder
-	 */
-	protected function builder(?string $table = null) : BaseBuilder
-	{
-		if ($this->builder instanceof BaseBuilder)
+		// At least one param is required
+		if(! isset($permId) && ! isset($userId))
 		{
-			return $this->builder;
+			return false;
 		}
 
-		$table = empty($table) ? $this->table : $table;
+		$builder = $this->db->table($this->table);
+		if(isset($permId))
+		{
+			$builder->where('perm_id', $permId);
+		}
+		if(isset($userId))
+		{
+			$builder->where('user_id', $userId);
+		}
 
-		$this->builder = $this->db->table($table);
-
-		return $this->builder;
+		$builder->delete();
+		return $this->db->affectedRows() > 0;
 	}
 
 }

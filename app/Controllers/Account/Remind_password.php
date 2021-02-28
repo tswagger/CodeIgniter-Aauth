@@ -33,7 +33,7 @@ class Remind_password extends Controller
 	 */
 	public function __construct()
 	{
-		$this->aauth   = new Aauth();
+		$this->aauth   = Services::aauth();
 		$this->request = Services::request();
 		helper('form');
 	}

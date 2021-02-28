@@ -19,6 +19,7 @@ namespace App\Controllers\Account;
 
 use CodeIgniter\Controller;
 use App\Libraries\Aauth;
+use Config\Services;
 
 /**
  * Aauth Accont/Logout Controller
@@ -32,7 +33,7 @@ class Logout extends Controller
 	 */
 	public function __construct()
 	{
-		$this->aauth = new Aauth();
+		$this->aauth = Services::aauth();
 		helper('form');
 	}
 

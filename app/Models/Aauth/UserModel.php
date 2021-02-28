@@ -33,12 +33,12 @@ use Config\Aauth as AauthConfig;
 class UserModel extends Model
 {
 	/**
-	 * If true, will set created_at, and updated_at
-	 * values during insert and update routines.
+	 * The format that the results should be returned as.
+	 * Will be overridden if the as* methods are used.
 	 *
-	 * @var bool
+	 * @var string
 	 */
-	protected $useTimestamps = true;
+	protected $returnType = 'App\Entities\Aauth\User';
 
 	/**
 	 * An array of field names that are allowed
@@ -46,11 +46,7 @@ class UserModel extends Model
 	 *
 	 * @var array
 	 */
-	protected $allowedFields = [
-		'email',
-		'username',
-		'password',
-	];
+	protected $allowedFields = ['email', 'username', 'password'];
 
 	/**
 	 * Callbacks. Each array should contain the method
@@ -77,27 +73,33 @@ class UserModel extends Model
 	protected $beforeUpdate = ['hashPassword'];
 
 	/**
+	 * Use timestamps
+	 * @var bool $useTimestamps
+	 */
+	protected $useTimestamps = true;
+
+	/**
+	 * Use soft delete
+	 * @var bool $useSoftDeletes
+	 */
+	protected $useSoftDeletes = true;
+
+	protected $config;
+
+	/**
 	 * Constructor
 	 *
-	 * @param ?ConnectionInterface $db         Connection Interface
+	 * @param ?ConnectionInterface $db Connection Interface
 	 * @param ?ValidationInterface $validation Validation Interface
-	 * @param ?\Config\Aauth       $config     Config Object
 	 */
-	public function __construct(?ConnectionInterface &$db = null, ?ValidationInterface $validation = null, ?\Config\Aauth $config = null)
+	public function __construct(?ConnectionInterface &$db = null, ?ValidationInterface $validation = null)
 	{
-		if (is_null($config))
-		{
-			$config = new AauthConfig();
-		}
 
-		$this->config  = $config;
-		$this->DBGroup = $this->config->dbProfile;
+		parent::__construct($db, $validation);
 
-		parent::__construct();
+		$this->config = new AauthConfig();
 
-		$this->table              = $this->config->dbTableUsers;
-		$this->tempUseSoftDeletes = $this->config->dbSoftDeleteUsers;
-		$this->tempReturnType     = $this->config->dbReturnType;
+		$this->table = $this->config->dbTableUsers;
 
 		$this->validationRules['email']    = 'required|valid_email|is_unique[' . $this->table . '.email,id,{id}]';
 		$this->validationRules['password'] = 'required|min_length[' . $this->config->passwordMin . ']|max_length[' . $this->config->passwordMax . ']';
@@ -129,23 +131,6 @@ class UserModel extends Model
 		}
 	}
 
-	/**
-	 * Update
-	 *
-	 * @param int|array|string $id User Id
-	 * @param array|object $data Data Array
-	 *
-	 * @return bool
-	 * @throws \ReflectionException
-	 */
-	public function update($id = null, $data = null) : bool
-	{
-		$this->validationRules['email']    = 'if_exist|valid_email|is_unique[' . $this->table . '.email,id,{id}]';
-		$this->validationRules['password'] = 'if_exist|min_length[' . $this->config->passwordMin . ']|max_length[' . $this->config->passwordMax . ']';
-		$this->validationRules['username'] = 'if_exist|is_unique[' . $this->table . '.username,id,{id}]|regex_match[/' . $this->config->userRegexPattern . '/]';
-
-		return parent::update($id, $data);
-	}
 
 	/**
 	 * Update last login by User ID
@@ -212,18 +197,18 @@ class UserModel extends Model
 	 */
 	public function isBanned(int $userId) : bool
 	{
-		$builder = $this->builder();
 
 		if ($this->tempUseSoftDeletes === true)
 		{
-			$builder->where($this->deletedField, null);
+			$this->where($this->deletedField . ' IS NULL', null);
 		}
 
-		$builder->select('banned');
-		$builder->where($this->primaryKey, $userId);
-		$builder->where('banned', 1);
+		$query = $this->select('banned')
+			->where($this->primaryKey, $userId)
+			->where('banned', 1)
+			->first();
 
-		return ($builder->countAllResults() ? true : false);
+		return ($query->countAllResults() ? true : false);
 	}
 
 	/**
@@ -235,16 +220,10 @@ class UserModel extends Model
 	 */
 	public function existsById(int $userId) : bool
 	{
-		$builder = $this->builder();
+		$count = $this->where($this->primaryKey, $userId)
+			->countAllResults();
 
-		if ($this->tempUseSoftDeletes === true)
-		{
-			$builder->where($this->deletedField, null);
-		}
-
-		$builder->where($this->primaryKey, $userId);
-
-		return ($builder->countAllResults() ? true : false);
+		return ($count > 0);
 	}
 
 	/**
@@ -256,15 +235,9 @@ class UserModel extends Model
 	 */
 	public function existsByEmail(string $email) : bool
 	{
-		$builder = $this->builder();
-
-		if ($this->tempUseSoftDeletes === true)
-		{
-			$builder->where($this->deletedField, null);
-		}
-
-		$builder->where('email', $email);
-		return ($builder->countAllResults() ? true : false);
+		$count = $this->where('email', $email)
+			->countAllResults();
+		return ($count > 0);
 	}
 
 	/**
@@ -281,15 +254,9 @@ class UserModel extends Model
 			return false;
 		}
 
-		$builder = $this->builder();
-
-		if ($this->tempUseSoftDeletes === true)
-		{
-			$builder->where($this->deletedField, null);
-		}
-
-		$builder->where('username', $username);
-		return ($builder->countAllResults() ? true : false);
+		$count = $this->where('username', $username)
+			->countAllResults();
+		return ($count > 0);
 	}
 
 	/**

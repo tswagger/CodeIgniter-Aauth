@@ -20,6 +20,7 @@ namespace App\Models\Aauth;
 
 use Config\Aauth as AauthConfig;
 use Config\Database;
+use CodeIgniter\Model;
 use CodeIgniter\Database\BaseBuilder;
 use CodeIgniter\Database\BaseConnection;
 use CodeIgniter\Database\ConnectionInterface;
@@ -31,7 +32,7 @@ use CodeIgniter\Database\ConnectionInterface;
  *
  * @since 3.0.0
  */
-class LoginTokenModel
+class LoginTokenModel extends Model
 {
 
 	/**
@@ -47,6 +48,14 @@ class LoginTokenModel
 	 * @var BaseBuilder
 	 */
 	protected $builder;
+
+	/**
+	 * The format that the results should be returned as.
+	 * Will be overridden if the as* methods are used.
+	 *
+	 * @var string
+	 */
+	protected $returnType = 'App\Entities\Aauth\LoginToken';
 
 	/**
 	 * Name of database table
@@ -66,7 +75,7 @@ class LoginTokenModel
 	/**
 	 * Aauth Config object
 	 *
-	 * @var BaseConfig
+	 * @var AAuthConfig
 	 */
 	protected $config;
 
@@ -77,18 +86,11 @@ class LoginTokenModel
 	 */
 	public function __construct(?ConnectionInterface &$db = null)
 	{
+		parent::__construct();
+
 		$this->config  = new AauthConfig();
 		$this->DBGroup = $this->config->dbProfile;
 		$this->table   = $this->config->dbTableLoginTokens;
-
-		if ($db instanceof ConnectionInterface)
-		{
-			$this->db = & $db;
-		}
-		else
-		{
-			$this->db = Database::connect($this->DBGroup);
-		}
 	}
 
 	/**
@@ -96,34 +98,39 @@ class LoginTokenModel
 	 *
 	 * @param int $userId User id
 	 *
-	 * @return ?array
+	 * @return array
 	 */
-	public function findAllByUserId(int $userId) : ?array
+	public function findAllByUserId(int $userId) : array
 	{
-		$builder = $this->builder();
-		$builder->select('id, user_id, random_hash, selector_hash, expires_at');
-		$builder->where('user_id', $userId);
-
-		return $builder->get()->getResult('array');
+		return $this->select('id, user_id, random_hash, selector_hash, expires_at')
+			->where('user_id', $userId)
+			->findAll();
 	}
 
 	/**
 	 * Insert Login Token
 	 *
-	 * @param array $data Array with data
+	 * @param array|null|object $data Array with data
+	 * @param bool $returnID
 	 *
 	 * @return bool
-	 * @todo only return one type
+	 * @throws \ReflectionException
+	 * @todo: come back to
 	 */
-	public function insert(array $data) : bool
+	public function insertToken(array $data = null, bool $returnID = true) : bool
 	{
-		$builder = $this->builder();
+		if(is_object($data)) {
+			$data->created_at = date('Y-m-d H:i:s');
+			$data->expires_at = date('Y-m-d H:i:s', strtotime($this->config->loginRemember));
+			$data->updated_at = date('Y-m-d H:i:s');
+		}
+		else {
+			$data['created_at'] = date('Y-m-d H:i:s');
+			$data['expires_at'] = date('Y-m-d H:i:s', strtotime($this->config->loginRemember));
+			$data['updated_at'] = date('Y-m-d H:i:s');
+		}
 
-		$data['created_at'] = date('Y-m-d H:i:s');
-		$data['expires_at'] = date('Y-m-d H:i:s', strtotime($this->config->loginRemember));
-		$data['updated_at'] = date('Y-m-d H:i:s');
-
-		return $builder->insert($data)->resultID;
+		return parent::insert($data, $returnID);
 	}
 
 	/**
@@ -133,16 +140,21 @@ class LoginTokenModel
 	 * @param ?string $expiresAt Custom expires at date
 	 *
 	 * @return bool
+	 * @since 4.0.0
 	 */
-	public function update(int $tokenId, ?string $expiresAt = null) : bool
+	public function updateToken(int $tokenId, ?string $expiresAt = null): bool
 	{
-		$builder = $this->builder();
-		$builder->where('id', $tokenId);
 
 		$data['expires_at'] = date('Y-m-d H:i:s', strtotime($expiresAt ?: $this->config->loginRemember));
 		$data['updated_at'] = date('Y-m-d H:i:s');
 
-		return $builder->set($data)->update();
+		try {
+			return $this->update($tokenId, $data);
+		}
+		catch(\ReflectionException $e) {
+			log_message('error', $e->getMessage());
+			return false;
+		}
 	}
 
 	/**
@@ -152,13 +164,11 @@ class LoginTokenModel
 	 *
 	 * @return bool
 	 */
-	public function deleteExpired(int $userId) : bool
+	public function deleteExpired(int $userId): bool
 	{
-		$builder = $this->builder();
-		$builder->where('user_id', $userId);
-		$builder->where('expires_at <', date('Y-m-d H:i:s'));
-
-		return $builder->delete()->resultID;
+		return $this->where('user_id', $userId)
+			->where('expires_at <', date('Y-m-d H:i:s'))
+			->delete();
 	}
 
 	/**
@@ -170,31 +180,8 @@ class LoginTokenModel
 	 */
 	public function deleteAll(int $userId) : bool
 	{
-		$builder = $this->builder();
-		$builder->where('user_id', $userId);
-
-		return $builder->delete()->resultID;
-	}
-
-	/**
-	 * Provides a shared instance of the Query Builder.
-	 *
-	 * @param ?string $table Table Name
-	 *
-	 * @return BaseBuilder
-	 */
-	protected function builder(?string $table = null) : BaseBuilder
-	{
-		if ($this->builder instanceof BaseBuilder)
-		{
-			return $this->builder;
-		}
-
-		$table = empty($table) ? $this->table : $table;
-
-		$this->builder = $this->db->table($table);
-
-		return $this->builder;
+		return $this->where('user_id', $userId)
+			->delete();
 	}
 
 }

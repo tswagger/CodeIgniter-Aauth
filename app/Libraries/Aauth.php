@@ -13,13 +13,16 @@
  * @copyright 2014-2019 Emre Akay
  * @license   https://opensource.org/licenses/MIT   MIT License
  * @link      https://github.com/emreakay/CodeIgniter-Aauth
- * @version   3.0.0-rc2
+ * @version   4.0.0
  */
 
 namespace App\Libraries;
 
+use App\Models\Aauth\GroupToUserModel;
 use CodeIgniter\Model;
-use PHPMailer\PHPMailer\PHPMailer;
+use CodeIgniter\Session\Session;
+
+//use PHPMailer\PHPMailer\PHPMailer;
 
 /**
  * Aauth Library
@@ -28,6 +31,7 @@ use PHPMailer\PHPMailer\PHPMailer;
  */
 class Aauth
 {
+	// region Properties
 	/**
 	 * Variable for loading the config array into
 	 *
@@ -45,7 +49,7 @@ class Aauth
 	/**
 	 * Variable for loading the session service into
 	 *
-	 * @var \CodeIgniter\Session\Session
+	 * @var Session
 	 */
 	protected $session;
 
@@ -102,15 +106,17 @@ class Aauth
 	 */
 	protected $cacheGroupIds;
 
+	// endregion
+	// region Constructor
 	/**
 	 * Constructor
 	 *
 	 * Prepares config & session variable.
 	 *
-	 * @param ?\Config\Aauth               $config Config Object
-	 * @param ?\CodeIgniter\Session\Session $session Session Class
+	 * @param ?\Config\Aauth $config Config Object
+	 * @param ?Session $session Session Class
 	 */
-	public function __construct(?\Config\Aauth $config = null, ?\CodeIgniter\Session\Session $session = null)
+	public function __construct(?\Config\Aauth $config = null, ?Session $session = null)
 	{
 		if (! $config)
 		{
@@ -149,8 +155,10 @@ class Aauth
 		$this->precacheGroups();
 	}
 
+	// endregion
+
 	//--------------------------------------------------------------------
-	// Caching Functions
+	// region Caching Functions
 	//--------------------------------------------------------------------
 
 	/**
@@ -162,11 +170,11 @@ class Aauth
 	 */
 	private function precachePerms() : void
 	{
-		$permModel = $this->getModel('Perm');
+		$permModel = new \App\Models\Aauth\PermModel();
 
 		foreach ($permModel->asArray()->findAll() as $perm)
 		{
-			$key                      = str_replace(' ', '', trim(strtolower($perm['name'])));
+			$key = str_replace(' ', '', trim(strtolower($perm['name'])));
 			$this->cachePermIds[$key] = $perm['id'];
 		}
 	}
@@ -180,17 +188,18 @@ class Aauth
 	 */
 	private function precacheGroups() : void
 	{
-		$groupModel = $this->getModel('Group');
+		$groupModel = new \App\Models\Aauth\GroupModel();
 
 		foreach ($groupModel->asArray()->findAll() as $group)
 		{
-			$key                       = str_replace(' ', '', trim(strtolower($group['name'])));
+			$key = str_replace(' ', '', trim(strtolower($group['name'])));
 			$this->cacheGroupIds[$key] = $group['id'];
 		}
 	}
+	// endregion
 
 	//--------------------------------------------------------------------
-	// Login Functions
+	// region Login Functions
 	//--------------------------------------------------------------------
 
 	/**
@@ -210,11 +219,11 @@ class Aauth
 		helper('cookie');
 		delete_cookie($this->config->loginRememberCookie);
 
-		$userModel         = $this->getModel('User');
-		$loginAttemptModel = $this->getModel('LoginAttempt');
-		$userVariableModel = $this->getModel('UserVariable');
+		$userModel = new \App\Models\Aauth\UserModel();
+		$loginAttemptModel = new \App\Models\Aauth\LoginAttemptModel();
+		$userVariableModel = new \App\Models\Aauth\UserVariableModel();
 
-		if ($this->config->loginProtection && ! $loginAttemptModel->save())
+		if ($this->config->loginProtection && ! $loginAttemptModel->saveAttempt())
 		{
 			$this->error(lang('Aauth.loginAttemptsExceeded'));
 
@@ -277,12 +286,12 @@ class Aauth
 			}
 		}
 
-		if (! empty($userVariableModel->find($user['id'], 'verification_code', true)))
+		if (! empty($userVariableModel->getValue($user->id, 'verification_code', true)))
 		{
 			$this->error(lang('Aauth.notVerified'));
 			return false;
 		}
-		else if ($user['banned'])
+		else if ($user->banned)
 		{
 			$this->error(lang('Aauth.invalidUserBanned'));
 			return false;
@@ -290,7 +299,7 @@ class Aauth
 
 		if ($this->config->totpEnabled)
 		{
-			$totpSecret = $userVariableModel->find($user['id'], 'totp_secret', true);
+			$totpSecret = $userVariableModel->getValue($user->id, 'totp_secret', true);
 			$request    = \Config\Services::request();
 
 			if ($this->config->totpLogin)
@@ -303,7 +312,7 @@ class Aauth
 
 						return false;
 					}
-					else if (! $this->verifyUserTotpCode($totpCode, $user['id']))
+					else if (! $this->verifyUserTotpCode($totpCode, $user->id))
 					{
 						$this->error(lang('Aauth.invalidTOTPCode'));
 
@@ -312,7 +321,7 @@ class Aauth
 				}
 				else if ($this->config->totpOnIpChange)
 				{
-					if ($request->getIPAddress() !== $user['last_ip_address'])
+					if ($request->getIPAddress() !== $user->last_ip_address)
 					{
 						if (! empty($totpSecret) && ! $totpCode)
 						{
@@ -320,7 +329,7 @@ class Aauth
 
 							return false;
 						}
-						else if (! $this->verifyUserTotpCode($totpCode, $user['id']))
+						else if (! $this->verifyUserTotpCode($totpCode, $user->id))
 						{
 							$this->error(lang('Aauth.invalidTOTPCode'));
 
@@ -345,19 +354,19 @@ class Aauth
 			}
 		}
 
-		if (password_verify($password, $user['password']))
+		if (password_verify($password, $user->password))
 		{
-			$loginTokenModel = $this->getModel('LoginToken');
+			$loginTokenModel = new \App\Models\Aauth\LoginTokenModel();
 
 			if ($this->config->loginSingleMode)
 			{
-				$loginTokenModel->deleteAll($user['id']);
-				$userSessionModel = $this->getModel('UserSession');
+				$loginTokenModel->deleteAll($user->id);
+				$userSessionModel = new \App\Models\Aauth\UserSessionModel();
 
 				foreach ($userSessionModel->findAll() as $userSessionRow)
 				{
 					$result      = $matches = [];
-					$sessionData = ';' . $userSessionRow['data'];
+					$sessionData = ';' . $userSessionRow->data;
 					$keyreg      = '/;([^|{}"]+)\|/';
 
 					preg_match_all($keyreg, $sessionData, $matches);
@@ -375,30 +384,30 @@ class Aauth
 						$result      = array_combine($keys, $values);
 						$userSession = unserialize($result['user']);
 
-						if ($userSession['id'] === $user['id'])
+						if ($userSession['id'] === $user->id)
 						{
-							$userSessionModel->delete($userSessionRow['id']);
+							$userSessionModel->delete($userSessionRow->id);
 						}
 					}
 				}
 			}
 
-			$data['id']       = $user['id'];
-			$data['username'] = $user['username'];
-			$data['email']    = $user['email'];
+			$data['id']       = $user->id;
+			$data['username'] = $user->username;
+			$data['email']    = $user->email;
 			$data['loggedIn'] = true;
 			$this->session->set('user', $data);
 
 			if ($remember)
 			{
-				$this->generateRemember($user['id']);
+				$this->generateRemember($user->id);
 			}
 
-			$userModel->updateLastLogin($user['id']);
+			$userModel->updateLastLogin($user->id);
 
 			if ($this->config->loginAttemptRemoveSuccessful)
 			{
-				$loginAttemptModel->delete();
+				$loginAttemptModel->deleteAttempt();
 			}
 
 			return true;
@@ -458,8 +467,8 @@ class Aauth
 		$tokenData['selector_hash'] = password_hash($selectorString, PASSWORD_DEFAULT);
 		$tokenData['expires_at']    = date('Y-m-d H:i:s', strtotime($expire));
 
-		$loginTokenModel = $this->getModel('LoginToken');
-		$loginTokenModel->insert($tokenData);
+		$loginTokenModel = new \App\Models\Aauth\LoginTokenModel();
+		$loginTokenModel->insertToken($tokenData);
 	}
 
 	/**
@@ -494,25 +503,26 @@ class Aauth
 	 */
 	private function loginFast(int $userId) : bool
 	{
-		$userModel = $this->getModel('User');
+		$userModel = new \App\Models\Aauth\UserModel();
 		$userModel->select('id, email, username');
 		$userModel->where('id', $userId);
 		$userModel->where('banned', 0);
 
-		$user = $userModel->asArray()->first();
+		$user = $userModel->first();
 
 		$this->session->set('user', [
-			'id'       => $user['id'],
-			'username' => $user['username'],
-			'email'    => $user['email'],
+			'id'       => $user->id,
+			'username' => $user->username,
+			'email'    => $user->email,
 			'loggedIn' => true,
 		]);
 
 		return true;
 	}
+	// endregion
 
 	//--------------------------------------------------------------------
-	// Access Functions
+	// region Access Functions
 	//--------------------------------------------------------------------
 
 	/**
@@ -541,8 +551,8 @@ class Aauth
 			}
 			else
 			{
-				$loginTokenModel = $this->getModel('LoginToken');
-				$loginTokens     = $loginTokenModel->findAllByUserId($cookie[0]);
+				$loginTokenModel = new \App\Models\Aauth\LoginTokenModel();
+				$loginTokens = $loginTokenModel->findAllByUserId($cookie[0]);
 
 				foreach ($loginTokens as $loginToken)
 				{
@@ -582,7 +592,8 @@ class Aauth
 	 */
 	public function isMember($groupPar, ?int $userId = null) : bool
 	{
-		$userModel = $this->getModel('User');
+
+		$userModel = new \App\Models\Aauth\UserModel();
 
 		if (!isset($userId))
 		{
@@ -595,8 +606,7 @@ class Aauth
 			return false;
 		}
 
-		$groupToUserModel = $this->getModel('GroupToUser');
-
+		$groupToUserModel = new \App\Models\Aauth\GroupToUserModel();
 		return $groupToUserModel->exists($groupId, $userId);
 	}
 
@@ -639,7 +649,7 @@ class Aauth
 			}
 		}
 
-		$userModel = $this->getModel('User');
+		$userModel = new \App\Models\Aauth\UserModel();
 
 		if (!isset($userId))
 		{
@@ -662,7 +672,7 @@ class Aauth
 				return false;
 			}
 
-			$permToUserModel = $this->getModel('PermToUser');
+			$permToUserModel = new \App\Models\Aauth\PermToUserModel();
 
 			if ($permToUserModel->denied($permId, $userId))
 			{
@@ -714,7 +724,7 @@ class Aauth
 				return true;
 			}
 
-			$permToGroupModel = $this->getModel('PermToGroup');
+			$permToGroupModel = new \App\Models\Aauth\PermToGroupModel();
 			$groupId          = $this->getGroupId($groupPar);
 			$groupAllowed     = false;
 
@@ -795,7 +805,8 @@ class Aauth
 			return \Config\Services::response()->redirect($this->config->totpLink);
 		}
 
-		$this->getModel('User')->updateLastActivity($this->getUserId());
+		$userModel = new \App\Models\Aauth\UserModel();
+		$userModel->updateLastActivity($this->getUserId());
 
 		$permId = $this->getPermId($permPar);
 		if (! isset($permId) )
@@ -830,9 +841,10 @@ class Aauth
 
 		return true;
 	}
+	// endregion
 
 	//--------------------------------------------------------------------
-	// User Functions
+	// region User Functions
 	//--------------------------------------------------------------------
 
 	/**
@@ -848,26 +860,37 @@ class Aauth
 	 */
 	public function createUser(string $email, string $password, ?string $username = null) : ?int
 	{
-		$userModel = $this->getModel('User');
-
 		$data = array(
 			'email' => $email,
 			'password' => $password,
 			'username' => $username
 		);
 
-		if (! $userId = $userModel->insert($data))
+		$userModel = new \App\Models\Aauth\UserModel();
+
+		$user = new \App\Entities\Aauth\User($data);
+
+		$userId = null;
+		try {
+			$userId = $userModel->insert($user);
+		}
+		catch(\ReflectionException $e) {
+			log_message('error', $e->getMessage());
+			return null;
+		}
+	log_message('info', "user response: " . print_r($userId, true));
+		if (! isset($userId) || (is_bool($userId) && ! $userId))
 		{
 			$this->error(array_values($userModel->errors()));
 
 			return null;
 		}
-
+	log_message('info', "user pre-member add");
 		if ($this->config->groupDefault)
 		{
 			$this->addMember($this->config->groupDefault, $userId);
 		}
-
+	log_message('info', "user completely added");
 		if ($this->config->userVerification)
 		{
 			$this->sendVerification($userId, $email);
@@ -895,7 +918,7 @@ class Aauth
 	 */
 	public function updateUser(int $userId, ?string $email = null, ?string $password = null, ?string $username = null) : bool
 	{
-		$userModel = $this->getModel('User');
+		$userModel = new \App\Models\Aauth\UserModel();
 
 		if (! $userModel->existsById($userId))
 		{
@@ -938,9 +961,9 @@ class Aauth
 	 */
 	public function deleteUser(int $userId) : bool
 	{
-		$userModel        = $this->getModel('User');
-		$groupToUserModel = $this->getModel('GroupToUser');
-		$permToUserModel  = $this->getModel('PermToUser');
+		$userModel = new \App\Models\Aauth\UserModel();
+		$groupToUserModel = new \App\Models\Aauth\GroupToUserModel();
+		$permToUserModel  = new \App\Models\Aauth\PermToUserModel();
 
 		if (! $userModel->existsById($userId))
 		{
@@ -985,7 +1008,7 @@ class Aauth
 	 */
 	public function listUsers($groupPar = null, int $limit = 0, int $offset = 0, bool $includeBanned = true, ?string $orderBy = null) : array
 	{
-		$userModel = $this->getModel('User');
+		$userModel = new \App\Models\Aauth\UserModel();
 		$userModel->limit($limit, $offset);
 
 		$userModel->select('id, email, username, banned, created_at, updated_at, last_activity, last_ip_address, last_login');
@@ -1025,7 +1048,7 @@ class Aauth
 	 */
 	public function listUsersPaginated($groupPar = null, int $limit = 10, bool $includeBanned = true, ?string $orderBy = null) : array
 	{
-		$userModel = $this->getModel('User');
+		$userModel = new \App\Models\Aauth\UserModel();
 
 		$userModel->select('id, email, username, banned, created_at, updated_at, last_activity, last_ip_address, last_login');
 
@@ -1065,12 +1088,13 @@ class Aauth
 	protected function sendVerification(int $userId, string $email) : bool
 	{
 		helper('text');
-		$userVariableModel = $this->getModel('UserVariable');
-		// $emailService      = \Config\Services::email();
-		$emailService     = new PHPMailer;
+		$userVariableModel = new \App\Models\Aauth\UserVariableModel();
+
+		$emailService      = \Config\Services::email();
+
 		$verificationCode = sha1(strtotime('now'));
 
-		$userVariableModel->save($userId, 'verification_code', $verificationCode, true);
+		$userVariableModel->saveVar($userId, 'verification_code', $verificationCode, true);
 
 		$messageData['code'] = $verificationCode;
 		$messageData['link'] = site_url($this->config->linkVerification . '/' . $userId . '/' . $verificationCode);
@@ -1082,7 +1106,7 @@ class Aauth
 			{
 				$emailService->isSMTP();
 				$emailService->Host       = $this->config->emailConfig->SMTPHost ? : '';
-				$emailService->SMTPAuth   = true;
+//				$emailService->SMTPAuth   = true;
 				$emailService->Username   = $this->config->emailConfig->SMTPUser ? : '';
 				$emailService->Password   = $this->config->emailConfig->SMTPPass ? : '';
 				$emailService->SMTPSecure = $this->config->emailConfig->SMTPCrypto ? : 'tls';
@@ -1133,7 +1157,7 @@ class Aauth
 	 */
 	public function verifyUser(string $verificationCode) : bool
 	{
-		$userVariableModel = $this->getModel('UserVariable');
+		$userVariableModel = new \App\Models\Aauth\UserVariableModel();
 		$userVariable      = array(
 			'data_key'   => 'verification_code',
 			'data_value' => $verificationCode,
@@ -1147,7 +1171,7 @@ class Aauth
 			return false;
 		}
 
-		$userVariableModel->delete($verificationCodeStored['user_id'], 'verification_code', true);
+		$userVariableModel->deleteVar($verificationCodeStored['user_id'], 'verification_code', true);
 		$this->info(lang('Aauth.infoVerification'));
 
 		return true;
@@ -1167,8 +1191,8 @@ class Aauth
 	 */
 	public function getUser(?int $userId = null, bool $includeVariables = false, bool $systemVariables = false)
 	{
-		$userModel         = $this->getModel('User');
-		$userVariableModel = $this->getModel('UserVariable');
+		$userModel = new \App\Models\Aauth\UserModel();
+		$userVariableModel = new \App\Models\Aauth\UserVariableModel();
 
 		$userModel->select('id, email, username, banned, created_at, updated_at, last_activity, last_ip_address, last_login');
 
@@ -1186,7 +1210,7 @@ class Aauth
 		if ($includeVariables)
 		{
 			$userVariableModel->select('data_key, data_value');
-			$variables = $userVariableModel->findAll($userId, $systemVariables);
+			$variables = $userVariableModel->findAllByUser($userId, $systemVariables);
 
 			$user['variables'] = $variables;
 		}
@@ -1205,7 +1229,7 @@ class Aauth
 	 */
 	public function getUserId(?string $email = null) : ?int
 	{
-		$userModel = $this->getModel('User');
+		$userModel = new \App\Models\Aauth\UserModel();
 
 		if (!isset($email))
 		{
@@ -1231,7 +1255,7 @@ class Aauth
 	 */
 	public function getActiveUsersCount() : int
 	{
-		$userSessionModel = $this->getModel('UserSession');
+		$userSessionModel = new \App\Models\Aauth\UserSessionModel();
 
 		return count($userSessionModel->findAll());
 	}
@@ -1246,7 +1270,7 @@ class Aauth
 	 */
 	public function listActiveUsers() : array
 	{
-		$userSessionModel = $this->getModel('UserSession');
+		$userSessionModel = new \App\Models\Aauth\UserSessionModel();
 
 		$usersIds = [];
 
@@ -1280,7 +1304,7 @@ class Aauth
 			return [];
 		}
 
-		$userModel = $this->getModel('User');
+		$userModel = new \App\Models\Aauth\UserModel();
 		$userModel->select('id, email, username, banned, created_at, updated_at, last_activity, last_ip_address, last_login');
 		$userModel->whereIn('id', $usersIds);
 
@@ -1296,7 +1320,7 @@ class Aauth
 	 */
 	public function isBanned(?int $userId = null) : bool
 	{
-		$userModel = $this->getModel('User');
+		$userModel = new \App\Models\Aauth\UserModel();
 
 		if (!isset($userId))
 		{
@@ -1320,7 +1344,7 @@ class Aauth
 	 */
 	public function banUser(?int $userId = null) : bool
 	{
-		$userModel = $this->getModel('User');
+		$userModel = new \App\Models\Aauth\UserModel();
 
 		if (!isset($userId))
 		{
@@ -1346,7 +1370,7 @@ class Aauth
 	 */
 	public function unbanUser(?int $userId = null) : bool
 	{
-		$userModel = $this->getModel('User');
+		$userModel = new \App\Models\Aauth\UserModel();
 
 		if (!isset($userId))
 		{
@@ -1374,20 +1398,21 @@ class Aauth
 	 */
 	public function remindPassword(string $email) : bool
 	{
-		$userModel = $this->getModel('User');
+		$userModel = new \App\Models\Aauth\UserModel();
 
-		if (! $user = $userModel->where('email', $email)->getFirstRow('array'))
+		$user = $userModel->where('email', $email)->first();
+		if (! isset($user))
 		{
 			$this->error(lang('Aauth.notFoundUser'));
 
 			return false;
 		}
 
-		$userVariableModel = $this->getModel('UserVariable');
-		// $emailService      = \Config\Services::email();
-		$emailService = new PHPMailer;
+		$userVariableModel = new \App\Models\Aauth\UserVariableModel();
+		$emailService = \Config\Services::email();
+
 		$resetCode    = sha1(strtotime('now'));
-		$userVariableModel->save($user['id'], 'verification_code', $resetCode, true);
+		$userVariableModel->saveVar($user['id'], 'verification_code', $resetCode, true);
 
 		$messageData['code'] = $resetCode;
 		$messageData['link'] = site_url($this->config->linkResetPassword . '/' . $resetCode);
@@ -1399,7 +1424,7 @@ class Aauth
 			{
 				$emailService->isSMTP();
 				$emailService->Host       = $this->config->emailConfig->SMTPHost ? : '';
-				$emailService->SMTPAuth   = true;
+//				$emailService->SMTPAuth   = true;
 				$emailService->Username   = $this->config->emailConfig->SMTPUser ? : '';
 				$emailService->Password   = $this->config->emailConfig->SMTPPass ? : '';
 				$emailService->SMTPSecure = $this->config->emailConfig->SMTPCrypto ? : 'tls';
@@ -1457,7 +1482,7 @@ class Aauth
 	 */
 	public function resetPassword(string $resetCode) : bool
 	{
-		$userVariableModel = $this->getModel('UserVariable');
+		$userVariableModel = new \App\Models\Aauth\UserVariableModel();
 		$variable          = array(
 			'data_key'   => 'verification_code',
 			'data_value' => $resetCode,
@@ -1472,7 +1497,7 @@ class Aauth
 		}
 
 		helper('text');
-		$userModel = $this->getModel('User');
+		$userModel = new \App\Models\Aauth\UserModel();
 		$password  = random_string('alnum', $this->config->passwordMin);
 
 		if (! $user = $userModel->find($userVariable['user_id']))
@@ -1489,11 +1514,11 @@ class Aauth
 		$data['password'] = $password;
 
 		$userModel->update($user['id'], $data);
-		$userVariableModel->delete($user['id'], 'verification_code', true);
+		$userVariableModel->deleteVar($user['id'], 'verification_code', true);
 
 		if ($this->config->totpEnabled && $this->config->totpResetPassword)
 		{
-			$userVariableModel->delete($user['id'], 'totp_secret', true);
+			$userVariableModel->deleteVar($user['id'], 'totp_secret', true);
 		}
 
 		$messageData['password'] = $password;
@@ -1571,16 +1596,16 @@ class Aauth
 			$userId = (int) @$this->session->user['id'];
 		}
 
-		$userModel = $this->getModel('User');
+		$userModel = new \App\Models\Aauth\UserModel();
 
 		if (! $userModel->existsById($userId))
 		{
 			return false;
 		}
 
-		$userVariableModel = $this->getModel('UserVariable');
+		$userVariableModel = new \App\Models\Aauth\UserVariableModel();
 
-		return $userVariableModel->save($userId, $key, $value);
+		return $userVariableModel->saveVar($userId, $key, $value);
 	}
 
 	/**
@@ -1598,16 +1623,16 @@ class Aauth
 			$userId = (int) @$this->session->user['id'];
 		}
 
-		$userModel = $this->getModel('User');
+		$userModel = new \App\Models\Aauth\UserModel();
 
 		if (! $userModel->existsById($userId))
 		{
 			return false;
 		}
 
-		$userVariableModel = $this->getModel('UserVariable');
+		$userVariableModel = new \App\Models\Aauth\UserVariableModel();
 
-		return $userVariableModel->delete($userId, $key);
+		return $userVariableModel->deleteVar($userId, $key);
 	}
 
 	/**
@@ -1625,16 +1650,16 @@ class Aauth
 			$userId = (int) @$this->session->user['id'];
 		}
 
-		$userModel = $this->getModel('User');
+		$userModel = new \App\Models\Aauth\UserModel();
 
 		if (! $userModel->existsById($userId))
 		{
 			return null;
 		}
 
-		$userVariableModel = $this->getModel('UserVariable');
+		$userVariableModel = new \App\Models\Aauth\UserVariableModel();
 
-		if (! $variable = $userVariableModel->find($userId, $key))
+		if (! $variable = $userVariableModel->getValue($userId, $key))
 		{
 			return null;
 		}
@@ -1658,16 +1683,16 @@ class Aauth
 			$userId = (int) @$this->session->user['id'];
 		}
 
-		$userModel = $this->getModel('User');
+		$userModel = new \App\Models\Aauth\UserModel();
 
 		if (! $userModel->existsById($userId))
 		{
 			return array();
 		}
 
-		$userVariableModel = $this->getModel('UserVariable');
+		$userVariableModel = new \App\Models\Aauth\UserVariableModel();
 
-		return $userVariableModel->findAll($userId);
+		return $userVariableModel->findAllByUser($userId);
 	}
 
 	/**
@@ -1686,21 +1711,22 @@ class Aauth
 			$userId = (int) @$this->session->user['id'];
 		}
 
-		$userModel = $this->getModel('User');
+		$userModel = new \App\Models\Aauth\UserModel();
 
 		if (! $userModel->existsById($userId))
 		{
 			return array();
 		}
 
-		$userVariableModel = $this->getModel('UserVariable');
+		$userVariableModel = new \App\Models\Aauth\UserVariableModel();
 		$userVariableModel->select('data_key as key');
 
-		return $userVariableModel->findAll($userId);
+		return $userVariableModel->findAllByUser($userId);
 	}
+	// endregion
 
 	//--------------------------------------------------------------------
-	// Group Functions
+	// region Group Functions
 	//--------------------------------------------------------------------
 
 	/**
@@ -1713,7 +1739,7 @@ class Aauth
 	 */
 	public function createGroup(string $name, string $definition = '') : ?int
 	{
-		$groupModel = $this->getModel('Group');
+		$groupModel = new \App\Models\Aauth\GroupModel();
 
 		$data['name']       = $name;
 		$data['definition'] = $definition;
@@ -1740,7 +1766,7 @@ class Aauth
 	 */
 	public function updateGroup($groupPar, ?string $name = null, ?string $definition = null) : bool
 	{
-		$groupModel = $this->getModel('Group');
+		$groupModel = new \App\Models\Aauth\GroupModel();
 
 		$groupId = $this->getGroupId($groupPar);
 
@@ -1782,10 +1808,10 @@ class Aauth
 	 */
 	public function deleteGroup($groupPar) : bool
 	{
-		$groupModel        = $this->getModel('Group');
-		$groupToGroupModel = $this->getModel('GroupToGroup');
-		$groupToUserModel  = $this->getModel('GroupToUser');
-		$permToGroupModel  = $this->getModel('PermToGroup');
+		$groupModel = new \App\Models\Aauth\GroupModel();
+		$groupToGroupModel = new \App\Models\Aauth\GroupToGroupModel();
+		$groupToUserModel = new \App\Models\Aauth\GroupToUserModel();
+		$permToGroupModel = new \App\Models\Aauth\PermToGroupModel();
 
 		$groupId = $this->getGroupId($groupPar);
 		if (! isset($groupId) )
@@ -1828,10 +1854,12 @@ class Aauth
 	 */
 	public function addMember($groupPar, int $userId) : bool
 	{
-		$userModel        = $this->getModel('User');
-		$groupToUserModel = $this->getModel('GroupToUser');
+		$userModel = new \App\Models\Aauth\UserModel();
+		$groupToUserModel = new \App\Models\Aauth\GroupToUserModel();
 
+	log_message('info', 'Start Group Add');
 		$groupId = $this->getGroupId($groupPar);
+	log_message('info', 'Group added value: ' . print_r($groupId, true));
 		if (! isset($groupId) )
 		{
 			$this->error(lang('Aauth.notFoundGroup'));
@@ -1850,8 +1878,14 @@ class Aauth
 
 			return true;
 		}
-
-		return $groupToUserModel->insert($groupId, $userId);
+	log_message('info', 'Group add checks complete');
+		try {
+			return $groupToUserModel->addUserToGroup($groupId, $userId);
+		}
+		catch (\ReflectionException $e) {
+			log_message('error', $e->getMessage());
+			return false;
+		}
 	}
 
 	/**
@@ -1864,7 +1898,7 @@ class Aauth
 	 */
 	public function removeMember($groupPar, int $userId) : bool
 	{
-		$groupToUserModel = $this->getModel('GroupToUser');
+		$groupToUserModel = new \App\Models\Aauth\GroupToUserModel();
 
 		$groupId = $this->getGroupId($groupPar);
 
@@ -1880,7 +1914,7 @@ class Aauth
 	 */
 	public function getUserGroups(?int $userId = null) : array
 	{
-		$userModel = $this->getModel('User');
+		$userModel = new \App\Models\Aauth\UserModel();
 
 		if (! $userId)
 		{
@@ -1892,7 +1926,7 @@ class Aauth
 			return array();
 		}
 
-		$groupToUserModel = $this->getModel('GroupToUser');
+		$groupToUserModel = new \App\Models\Aauth\GroupToUserModel();
 
 		return $groupToUserModel->findAllByUserId($userId);
 	}
@@ -1908,14 +1942,14 @@ class Aauth
 	 */
 	public function getUserPerms($userId, ?int $state = null) : array
 	{
-		$userModel = $this->getModel('User');
+		$userModel = new \App\Models\Aauth\UserModel();
 
 		if (! $userModel->existsById($userId))
 		{
 			return array();
 		}
 
-		$permToUserModel = $this->getModel('PermToUser');
+		$permToUserModel = new \App\Models\Aauth\PermToUserModel();
 
 		return $permToUserModel->findAllByUserId($userId, $state);
 	}
@@ -1930,8 +1964,8 @@ class Aauth
 	 */
 	public function addSubgroup($groupPar, $subgroupPar) : bool
 	{
-		$groupModel        = $this->getModel('Group');
-		$groupToGroupModel = $this->getModel('GroupToGroup');
+		$groupModel = new \App\Models\Aauth\GroupModel();
+		$groupToGroupModel = new \App\Models\Aauth\GroupToGroupModel();
 
 		$groupId = $this->getGroupId($groupPar);
 		$subgroupId = $this->getGroupId($subgroupPar);
@@ -1987,7 +2021,7 @@ class Aauth
 	 */
 	public function removeSubgroup($groupPar, $subgroupPar) : bool
 	{
-		$groupToGroupModel = $this->getModel('GroupToGroup');
+		$groupToGroupModel = new \App\Models\Aauth\GroupToGroupModel();
 		$groupId           = $this->getGroupId($groupPar);
 		$subgroupId        = $this->getGroupId($subgroupPar);
 
@@ -2010,7 +2044,7 @@ class Aauth
 			return array();
 		}
 
-		$groupToGroupModel = $this->getModel('GroupToGroup');
+		$groupToGroupModel = new \App\Models\Aauth\GroupToGroupModel();
 
 		return $groupToGroupModel->findAllByGroupId($groupId);
 	}
@@ -2031,7 +2065,7 @@ class Aauth
 			return array();
 		}
 
-		$groupModel = $this->getModel('Group');
+		$groupModel = new \App\Models\Aauth\GroupModel();
 
 		$groupModel->select('id, name, definition, IF(group_id = ' . $groupId . ', 1, 0)  as subgroup');
 		$groupModel->join($this->config->dbTableGroupToGroup, '(' . $this->config->dbTableGroups . '.id = ' . $this->config->dbTableGroupToGroup . '.subgroup_id AND ' . $this->config->dbTableGroupToGroup . '.group_id = ' . $groupId . ')', 'left');
@@ -2059,7 +2093,7 @@ class Aauth
 			return array();
 		}
 
-		$groupModel = $this->getModel('Group');
+		$groupModel = new \App\Models\Aauth\GroupModel();
 		$groupModel->select('id, name, definition, IF(group_id = ' . $groupId . ', 1, 0)  as subgroup');
 		$groupModel->join($this->config->dbTableGroupToGroup, '(' . $this->config->dbTableGroups . '.id = ' . $this->config->dbTableGroupToGroup . '.subgroup_id AND ' . $this->config->dbTableGroupToGroup . '.group_id = ' . $groupId . ')', 'left');
 
@@ -2092,7 +2126,7 @@ class Aauth
 			return array();
 		}
 
-		$permToGroupModel = $this->getModel('PermToGroup');
+		$permToGroupModel = new \App\Models\Aauth\PermToGroupModel();
 
 		return $permToGroupModel->findAllByGroupId($groupId, $state);
 	}
@@ -2106,7 +2140,7 @@ class Aauth
 	 */
 	public function removeMemberFromAll(int $userId) : bool
 	{
-		$groupToUserModel = $this->getModel('GroupToUser');
+		$groupToUserModel = new \App\Models\Aauth\GroupToUserModel();
 
 		return $groupToUserModel->deleteAllByUserId($userId);
 	}
@@ -2119,7 +2153,7 @@ class Aauth
 	 */
 	public function listGroups() : array
 	{
-		$groupModel = $this->getModel('Group');
+		$groupModel = new \App\Models\Aauth\GroupModel();
 
 		return $groupModel->findAll();
 	}
@@ -2137,7 +2171,7 @@ class Aauth
 	 */
 	public function listGroupsPaginated(int $limit = 10, ?string $orderBy = null) : array
 	{
-		$groupModel = $this->getModel('Group');
+		$groupModel = new \App\Models\Aauth\GroupModel();
 
 		if (isset($orderBy))
 		{
@@ -2159,7 +2193,7 @@ class Aauth
 	 */
 	public function getGroupName(int $groupId) : ?string
 	{
-		$groupModel = $this->getModel('Group');
+		$groupModel = new \App\Models\Aauth\GroupModel();
 
 		if (! $group = $groupModel->find($groupId))
 		{
@@ -2209,7 +2243,7 @@ class Aauth
 	 */
 	public function getGroup($groupPar) : array
 	{
-		$groupModel = $this->getModel('Group');
+		$groupModel = new \App\Models\Aauth\GroupModel();
 
 		$groupId = $this->getGroupId($groupPar);
 		if (! isset($groupId) )
@@ -2230,7 +2264,7 @@ class Aauth
 	 */
 	public function listUserGroups(?int $userId = null) : array
 	{
-		$userModel = $this->getModel('User');
+		$userModel = new \App\Models\Aauth\UserModel();
 
 		if (!isset($userId))
 		{
@@ -2242,7 +2276,7 @@ class Aauth
 			return array();
 		}
 
-		$groupModel = $this->getModel('Group');
+		$groupModel = new \App\Models\Aauth\GroupModel();
 
 		$groupModel->select('id, name, definition, IF(user_id = ' . $userId . ', 1, 0) as member');
 		$groupModel->join($this->config->dbTableGroupToUser, $this->config->dbTableGroups . '.id = ' . $this->config->dbTableGroupToUser . '.group_id AND ' . $this->config->dbTableGroupToUser . '.user_id = ' . $userId, 'left');
@@ -2264,7 +2298,7 @@ class Aauth
 	 */
 	public function listUserGroupsPaginated(?int $userId = null, int $limit = 10, string $orderBy = null) : array
 	{
-		$userModel = $this->getModel('User');
+		$userModel = new \App\Models\Aauth\UserModel();
 
 		if (!isset($userId))
 		{
@@ -2276,7 +2310,7 @@ class Aauth
 			return array();
 		}
 
-		$groupModel = $this->getModel('Group');
+		$groupModel = new \App\Models\Aauth\GroupModel();
 
 		$groupModel->select('id, name, definition, IF(user_id = ' . $userId . ', 1, 0) as member');
 		$groupModel->join($this->config->dbTableGroupToUser, $this->config->dbTableGroups . '.id = ' . $this->config->dbTableGroupToUser . '.group_id AND ' . $this->config->dbTableGroupToUser . '.user_id = ' . $userId, 'left');
@@ -2306,7 +2340,7 @@ class Aauth
 	 */
 	public function setGroupVar(string $key, string $value, $groupPar) : bool
 	{
-		$groupModel = $this->getModel('Group');
+		$groupModel = new \App\Models\Aauth\GroupModel();
 
 		$groupId = $this->getGroupId($groupPar);
 		if (! isset($groupId) )
@@ -2314,7 +2348,7 @@ class Aauth
 			return false;
 		}
 
-		$groupVariableModel = $this->getModel('GroupVariable');
+		$groupVariableModel = new \App\Models\Aauth\GroupVariableModel();
 
 		return $groupVariableModel->save($groupId, $key, $value);
 	}
@@ -2329,7 +2363,7 @@ class Aauth
 	 */
 	public function unsetGroupVar(string $key, $groupPar) : bool
 	{
-		$groupModel = $this->getModel('Group');
+		$groupModel = new \App\Models\Aauth\GroupModel();
 
 		$groupId = $this->getGroupId($groupPar);
 		if (! isset($groupId) )
@@ -2337,7 +2371,7 @@ class Aauth
 			return false;
 		}
 
-		$groupVariableModel = $this->getModel('GroupVariable');
+		$groupVariableModel = new \App\Models\Aauth\GroupVariableModel();
 
 		return $groupVariableModel->delete($groupId, $key);
 	}
@@ -2352,7 +2386,7 @@ class Aauth
 	 */
 	public function getGroupVar(string $key, string $groupPar) : ?string
 	{
-		$groupModel = $this->getModel('Group');
+		$groupModel = new \App\Models\Aauth\GroupModel();
 
 		$groupId = $this->getGroupId($groupPar);
 		if (! isset($groupId) )
@@ -2360,7 +2394,7 @@ class Aauth
 			return null;
 		}
 
-		$groupVariableModel = $this->getModel('GroupVariable');
+		$groupVariableModel = new \App\Models\Aauth\GroupVariableModel();
 
 		if (! $variable = $groupVariableModel->find($groupId, $key))
 		{
@@ -2382,7 +2416,7 @@ class Aauth
 	 */
 	public function listGroupVars(?string $groupPar = null) : array
 	{
-		$groupModel = $this->getModel('Group');
+		$groupModel = new \App\Models\Aauth\GroupModel();
 
 		$groupId = $this->getGroupId($groupPar);
 		if (! isset($groupId) )
@@ -2390,7 +2424,7 @@ class Aauth
 			return array();
 		}
 
-		$groupVariableModel = $this->getModel('GroupVariable');
+		$groupVariableModel = new \App\Models\Aauth\GroupVariableModel();
 
 		return $groupVariableModel->findAll($groupId);
 	}
@@ -2407,7 +2441,7 @@ class Aauth
 	 */
 	public function getGroupVarKeys(?string $groupPar = null) : array
 	{
-		$groupModel = $this->getModel('Group');
+		$groupModel = new \App\Models\Aauth\GroupModel();
 
 		$groupId = $this->getGroupId($groupPar);
 		if (! isset($groupId) )
@@ -2415,14 +2449,16 @@ class Aauth
 			return array();
 		}
 
-		$groupVariableModel = $this->getModel('GroupVariable');
+		$groupVariableModel = new \App\Models\Aauth\GroupVariableModel();
 		$groupVariableModel->select('data_key as key');
 
 		return $groupVariableModel->findAll($groupId);
 	}
 
+	// endregion
+
 	//--------------------------------------------------------------------
-	// Perm Functions
+	// region Perm Functions
 	//--------------------------------------------------------------------
 
 	/**
@@ -2437,7 +2473,7 @@ class Aauth
 	 */
 	public function createPerm(string $name, string $definition = '') : ?int
 	{
-		$permModel = $this->getModel('Perm');
+		$permModel = new \App\Models\Aauth\PermModel();
 
 		$data = array(
 			'name' => $name,
@@ -2469,7 +2505,7 @@ class Aauth
 	 */
 	public function updatePerm($permPar, ?string $name = null, ?string $definition = null) : bool
 	{
-		$permModel = $this->getModel('Perm');
+		$permModel = new \App\Models\Aauth\PermModel();
 
 		$permId = $this->getPermId($permPar);
 		if (!isset($name) && !isset($definition))
@@ -2513,9 +2549,9 @@ class Aauth
 	 */
 	public function deletePerm($permPar) : bool
 	{
-		$permModel        = $this->getModel('Perm');
-		$permToGroupModel = $this->getModel('PermToGroup');
-		$permToUserModel  = $this->getModel('PermToUser');
+		$permModel = new \App\Models\Aauth\PermModel();
+		$permToGroupModel = new \App\Models\Aauth\PermToGroupModel();
+		$permToUserModel = new \App\Models\Aauth\PermToUserModel();
 
 		$permId = $this->getPermId($permPar);
 		if ( ! isset($permId) )
@@ -2556,8 +2592,8 @@ class Aauth
 	 */
 	public function allowUser($permPar, int $userId) : bool
 	{
-		$userModel       = $this->getModel('User');
-		$permToUserModel = $this->getModel('PermToUser');
+		$userModel = new \App\Models\Aauth\UserModel();
+		$permToUserModel = new \App\Models\Aauth\PermToUserModel();
 
 		$permId = $this->getPermId($permPar);
 		if (! isset($permId))
@@ -2590,8 +2626,8 @@ class Aauth
 	 */
 	public function denyUser($permPar, int $userId) : bool
 	{
-		$userModel       = $this->getModel('User');
-		$permToUserModel = $this->getModel('PermToUser');
+		$userModel = new \App\Models\Aauth\UserModel();
+		$permToUserModel = new \App\Models\Aauth\PermToUserModel();
 
 		$permId = $this->getPermId($permPar);
 		if (! isset($permId))
@@ -2624,8 +2660,8 @@ class Aauth
 	 */
 	public function removeUserPerm($permPar, int $userId) : bool
 	{
-		$userModel       = $this->getModel('User');
-		$permToUserModel = $this->getModel('PermToUser');
+		$userModel = new \App\Models\Aauth\UserModel();
+		$permToUserModel = new \App\Models\Aauth\PermToUserModel();
 
 		$permId = $this->getPermId($permPar);
 		if (! isset($permId))
@@ -2656,7 +2692,7 @@ class Aauth
 	 */
 	public function allowGroup($permPar, $groupPar) : bool
 	{
-		$permToGroupModel = $this->getModel('PermToGroup');
+		$permToGroupModel = new \App\Models\Aauth\PermToGroupModel();
 
 		$permId = $this->getPermId($permPar);
 		if (! isset($permId))
@@ -2693,7 +2729,7 @@ class Aauth
 	 */
 	public function denyGroup($permPar, $groupPar) : bool
 	{
-		$permToGroupModel = $this->getModel('PermToGroup');
+		$permToGroupModel = new \App\Models\Aauth\PermToGroupModel();
 
 		$permId = $this->getPermId($permPar);
 		if (! isset($permId))
@@ -2730,7 +2766,7 @@ class Aauth
 	 */
 	public function removeGroupPerm($permPar, $groupPar) : bool
 	{
-		$permToGroupModel = $this->getModel('PermToGroup');
+		$permToGroupModel = new \App\Models\Aauth\PermToGroupModel();
 
 		$permId = $this->getPermId($permPar);
 		if (! isset($permId))
@@ -2761,7 +2797,7 @@ class Aauth
 	 */
 	public function listPerms() : array
 	{
-		$permModel = $this->getModel('Perm');
+		$permModel = new \App\Models\Aauth\PermModel();
 
 		return $permModel->findAll();
 	}
@@ -2779,7 +2815,7 @@ class Aauth
 	 */
 	public function listPermsPaginated(int $limit = 10, ?string $orderBy = null) : array
 	{
-		$permModel = $this->getModel('Perm');
+		$permModel = new \App\Models\Aauth\PermModel();
 
 		if (! is_null($orderBy))
 		{
@@ -2832,7 +2868,7 @@ class Aauth
 	 */
 	public function getPerm($permPar) : ?int
 	{
-		$permModel = $this->getModel('Perm');
+		$permModel = new \App\Models\Aauth\PermModel();
 
 		$permId = $this->getPermId($permPar);
 		if (! isset($permId) )
@@ -2859,7 +2895,7 @@ class Aauth
 			return array();
 		}
 
-		$permModel = $this->getModel('Perm');
+		$permModel = new \App\Models\Aauth\PermModel();
 
 		$permModel->select('id, name, definition, IF(state = 0 OR state = 1, state, -1) as state');
 		$permModel->join($this->config->dbTablePermToGroup, '(' . $this->config->dbTablePerms . '.id = ' . $this->config->dbTablePermToGroup . '.perm_id AND ' . $this->config->dbTablePermToGroup . '.group_id = ' . $groupId . ')', 'left');
@@ -2887,7 +2923,7 @@ class Aauth
 			return array();
 		}
 
-		$permModel = $this->getModel('Perm');
+		$permModel = new \App\Models\Aauth\PermModel();
 
 		$permModel->select('id, name, definition, IF(state = 0 OR state = 1, state, -1) as state');
 		$permModel->join($this->config->dbTablePermToGroup, '(' . $this->config->dbTablePerms . '.id = ' . $this->config->dbTablePermToGroup . '.perm_id AND ' . $this->config->dbTablePermToGroup . '.group_id = ' . $groupId . ')', 'left');
@@ -2923,7 +2959,7 @@ class Aauth
 			return array();
 		}
 
-		$permModel = $this->getModel('Perm');
+		$permModel = new \App\Models\Aauth\PermModel();
 
 		$permModel->select('id, name, definition, IF(state = 0 OR state = 1, state, -1) as state');
 		$permModel->join($this->config->dbTablePermToUser, '(' . $this->config->dbTablePerms . '.id = ' . $this->config->dbTablePermToUser . '.perm_id AND ' . $this->config->dbTablePermToUser . '.user_id = ' . $userId . ')', 'left');
@@ -2955,7 +2991,7 @@ class Aauth
 			return array();
 		}
 
-		$permModel = $this->getModel('Perm');
+		$permModel = new \App\Models\Aauth\PermModel();
 
 		$permModel->select('id, name, definition, IF(state = 0 OR state = 1, state, -1) as state');
 		$permModel->join($this->config->dbTablePermToUser, '(' . $this->config->dbTablePerms . '.id = ' . $this->config->dbTablePermToUser . '.perm_id AND ' . $this->config->dbTablePermToUser . '.user_id = ' . $userId . ')', 'left');
@@ -2970,9 +3006,10 @@ class Aauth
 			'pager' => $permModel->pager,
 		];
 	}
+	// endregion
 
 	//--------------------------------------------------------------------
-	// Error Functions
+	// region Error Functions
 	//--------------------------------------------------------------------
 
 	/**
@@ -3085,9 +3122,10 @@ class Aauth
 		$this->flashErrors = [];
 		$this->session->remove('errors');
 	}
+	// endregion
 
 	//--------------------------------------------------------------------
-	// Info Functions
+	// region Info Functions
 	//--------------------------------------------------------------------
 
 	/**
@@ -3200,44 +3238,12 @@ class Aauth
 		$this->flashInfos = [];
 		$this->session->remove('infos');
 	}
+	// endregion
 
 	//--------------------------------------------------------------------
-	// Utility Functions
+	// region Utility Functions
 	//--------------------------------------------------------------------
 
-	/**
-	 * Get Model
-	 *
-	 * @param string $model Model name
-	 *
-	 * @return ?Model
-	 */
-	public function getModel(string $model) : ?Model
-	{
-		if (strpos($model, '_'))
-		{
-			$model = str_replace('_', '', ucwords($model, '_'));
-		}
-		else if (strpos($model, ' '))
-		{
-			$model = str_replace(' ', '', ucwords($model));
-		}
-		if (! strpos($model, 'Model'))
-		{
-			$model .= 'Model';
-		}
-
-		$model = '\App\Models\Aauth\\' . $model;
-
-		if (class_exists($model))
-		{
-			return new $model();
-		}
-		else
-		{
-			return null;
-		}
-	}
 
 	/**
 	 * Provides direct access to method in the builder (if available)
@@ -3266,4 +3272,5 @@ class Aauth
 
 		trigger_error('Call to undefined method ' . __CLASS__ . '::' . $name . '()', E_USER_ERROR);
 	}
+	// endregion
 }

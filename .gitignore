@@ -160,6 +160,7 @@ nb-configuration.xml
 
 /app/Views/errors/
 /app/Views/welcome_message.php
+/spark
 
 composer.lock
 spark

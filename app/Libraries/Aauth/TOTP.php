@@ -46,7 +46,7 @@ class TOTP extends \App\Libraries\Aauth
 
 		$userVariableModel = $this->getModel('UserVariable');
 
-		return $userVariableModel->save($userId, 'totp_secret', $secret, true);
+		return $userVariableModel->saveVar($userId, 'totp_secret', $secret, true);
 	}
 
 	/**
@@ -113,7 +113,7 @@ class TOTP extends \App\Libraries\Aauth
 
 		$userVariableModel = $this->getModel('UserVariable');
 
-		if ($totpSecret = $userVariableModel->find($userId, 'totp_secret', true))
+		if ($totpSecret = $userVariableModel->getValue($userId, 'totp_secret', true))
 		{
 			$totp = OTPHP_TOTP::create($totpSecret);
 

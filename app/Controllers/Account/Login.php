@@ -29,13 +29,16 @@ use Config\Services;
  */
 class Login extends Controller
 {
+	private $config;
+	private $aauth;
+
 	/**
 	 * Constructor
 	 */
 	public function __construct()
 	{
 		$this->config  = new AauthConfig();
-		$this->aauth   = new Aauth();
+		$this->aauth   = Services::aauth();
 		$this->request = Services::request();
 		helper('form');
 	}
@@ -51,7 +54,7 @@ class Login extends Controller
 		{
 			$identifier = ($this->config->loginUseUsername ? $input['username'] : $input['email']);
 
-			if (! $this->aauth->login($identifier, $input['password'], (isset($input['remember']) ? true : false)))
+			if (! $this->aauth->login($identifier, $input['password'], isset($input['remember'])))
 			{
 				$data['errors'] = $this->aauth->printErrors('<br />', true);
 			}

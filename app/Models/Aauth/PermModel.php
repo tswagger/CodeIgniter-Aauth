@@ -19,6 +19,7 @@
 namespace App\Models\Aauth;
 
 use CodeIgniter\Model;
+use App\Entities\Aauth\Permission;
 use CodeIgniter\Database\ConnectionInterface;
 use CodeIgniter\Validation\ValidationInterface;
 use Config\Aauth as AauthConfig;
@@ -33,6 +34,27 @@ use Config\Aauth as AauthConfig;
 class PermModel extends Model
 {
 	/**
+	 * @var AauthConfig
+	 */
+	private AauthConfig $config;
+
+	/**
+	 * The format that the results should be returned as.
+	 * Will be overridden if the as* methods are used.
+	 *
+	 * @var string
+	 */
+	protected $returnType = 'App\Entities\Aauth\Permission';
+
+	/**
+	 * An array of field names that are allowed
+	 * to be set by the user in inserts/updates.
+	 *
+	 * @var array
+	 */
+	protected $allowedFields = ['name', 'definition'];
+
+	/**
 	 * If true, will set created_at, and updated_at
 	 * values during insert and update routines.
 	 *
@@ -41,38 +63,25 @@ class PermModel extends Model
 	protected $useTimestamps = true;
 
 	/**
-	 * An array of field names that are allowed
-	 * to be set by the user in inserts/updates.
-	 *
-	 * @var array
+	 * Use soft delete
+	 * @var bool $useSoftDeletes
 	 */
-	protected $allowedFields = array(
-		'name',
-		'definition',
-	);
+	protected $useSoftDeletes = true;
 
 	/**
 	 * Constructor
 	 *
 	 * @param ?ConnectionInterface $db Connection Interface
 	 * @param ?ValidationInterface $validation Validation Interface
-	 * @param ?\Config\Aauth $config Config Object
 	 */
-	public function __construct(?ConnectionInterface &$db = null, ?ValidationInterface $validation = null, ?\Config\Aauth $config = null)
+	public function __construct(?ConnectionInterface &$db = null, ?ValidationInterface $validation = null)
 	{
-		if (is_null($config))
-		{
-			$config = new AauthConfig();
-		}
 
-		$this->config  = $config;
-		$this->DBGroup = $this->config->dbProfile;
+		$this->config  = new AauthConfig();
 
-		parent::__construct();
+		parent::__construct($db, $validation);
 
-		$this->table              = $this->config->dbTablePerms;
-		$this->tempUseSoftDeletes = $this->config->dbSoftDeletePerms;
-		$this->tempReturnType     = $this->config->dbReturnType;
+		$this->table = $this->config->dbTablePerms;
 
 		$this->validationRules['name'] = 'required|is_unique[' . $this->table . '.name,id,{id}]';
 
@@ -85,49 +94,30 @@ class PermModel extends Model
 	}
 
 	/**
-	 * Checks if perm exist by perm id
+	 * Checks if permission exist by perm id
 	 *
-	 * @param int $permId Perm id
+	 * @param int $permId Permission id
 	 *
 	 * @return bool
 	 */
 	public function existsById(int $permId) : bool
 	{
-		$builder = $this->builder();
+		$count = $this->where($this->primaryKey, $permId)
+			->countAllResults();
 
-		if ($this->tempUseSoftDeletes === true)
-		{
-			$builder->where($this->deletedField, null);
-		}
-
-		$builder->where($this->primaryKey, $permId);
-		return ($builder->countAllResults() ? true : false);
+		return ($count > 0);
 	}
 
 	/**
-	 * Get perm by perm name
+	 * Get permission by permission name
 	 *
-	 * @param string $name Perm name
+	 * @param string $name Permission name
 	 *
-	 * @return string|boolean
-	 * @todo only return one type
+	 * @return ?Permission|object
 	 */
-	public function getByName(string $name)
+	public function getByName(string $name): ?Permission
 	{
-		$builder = $this->builder();
-
-		if ($this->tempUseSoftDeletes === true)
-		{
-			$builder->where($this->deletedField, null);
-		}
-
-		$builder->where('name', $name);
-
-		if (! $perm = $builder->get()->getFirstRow($this->tempReturnType))
-		{
-			return false;
-		}
-
-		return $perm;
+		return $this->where('name', $name)
+			->first();
 	}
 }

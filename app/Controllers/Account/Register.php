@@ -29,13 +29,16 @@ use Config\Services;
  */
 class Register extends Controller
 {
+	protected $config;
+	protected $aauth;
+
 	/**
 	 * Constructor
 	 */
 	public function __construct()
 	{
 		$this->config  = new AauthConfig();
-		$this->aauth   = new Aauth();
+		$this->aauth   = Services::aauth();
 		$this->request = Services::request();
 		helper('form');
 	}
@@ -49,15 +52,18 @@ class Register extends Controller
 	{
 		if ($input = $this->request->getPost())
 		{
-			if (! $this->aauth->createUser($input['email'], $input['password'], $input['username']))
+			if ( is_null($this->aauth->createUser($input['email'], $input['password'], $input['username'])))
 			{
+				log_message('info', 'Account creation failed');
 				$data['errors'] = $this->aauth->printErrors('<br />', true);
 			}
 			else
 			{
+				log_message('info', 'Account created');
 				$data['infos'] = $this->aauth->printInfos('<br />', true);
 			}
 		}
+
 
 		if (session('errors'))
 		{

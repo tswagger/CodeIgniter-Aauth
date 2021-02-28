@@ -42,7 +42,7 @@ class Edit extends Controller
 		}
 
 		$this->config  = new AauthConfig();
-		$this->aauth   = new Aauth();
+		$this->aauth   = Services::aauth();
 		$this->request = Services::request();
 		helper('form');
 	}

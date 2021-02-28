@@ -3,7 +3,9 @@
 use Config\Aauth as AauthConfig;
 use CodeIgniter\Test\CIDatabaseTestCase;
 use App\Models\Aauth\UserModel;
+use App\Entities\Aauth\User;
 
+// updated v4
 class UserModelTest extends CIDatabaseTestCase
 {
 	protected $refresh = true;
@@ -23,23 +25,23 @@ class UserModelTest extends CIDatabaseTestCase
 
 	public function testFindReturnsRow()
 	{
-		$user = $this->model->find(1);
-		$this->assertEquals('admin', $user['username']);
+		$user = User::type($this->model->find(1));
+		$this->assertEquals('admin', $user->username);
 	}
 
 	public function testUpdateLastLogin()
 	{
 		$this->model->updateLastLogin(1);
-		$user = $this->model->asArray()->find(1);
-		$this->assertCloseEnough(strtotime('now'), strtotime($user['last_login']), '', 5);
-		$this->assertCloseEnough(strtotime('now'), strtotime($user['last_activity']), '', 5);
+		$user = User::type($this->model->find(1));
+		$this->assertCloseEnough(strtotime('now'), strtotime($user->last_login), '', 5);
+		$this->assertCloseEnough(strtotime('now'), strtotime($user->last_activity), '', 5);
 	}
 
 	public function testUpdateLastActivity()
 	{
 		$this->model->updateLastActivity(1);
-		$user = $this->model->asArray()->find(1);
-		$this->assertCloseEnough(strtotime('now'), strtotime($user['last_activity']), '', 5);
+		$user = User::type($this->model->find(1));
+		$this->assertCloseEnough(strtotime('now'), strtotime($user->last_activity), '', 5);
 	}
 
 	public function testUpdateBanned()
@@ -73,16 +75,16 @@ class UserModelTest extends CIDatabaseTestCase
 
 	public function testHashPasswordFilled()
 	{
-		$userOld = $this->model->asArray()->find(1);
+		$userOld = User::type($this->model->find(1));
 		$this->model->update(1, ['id' => 1, 'password' => 'password123456']);
-		$userNew = $this->model->asArray()->find(1);
-		$this->assertNotEquals($userOld['password'], $userNew['password']);
-		$this->assertNotEquals('password123456', $userNew['password']);
+		$userNew = User::type($this->model->find(1));
+		$this->assertNotEquals($userOld->password, $userNew->password);
+		$this->assertNotEquals('password123456', $userNew->password);
 
-		$userOld = $this->model->asArray()->find(1);
+		$userOld = User::type($this->model->find(1));
 		$this->model->update(1, ['id' => 1, 'username' => 'admin']);
-		$userNew = $this->model->asArray()->find(1);
-		$this->assertEquals($userOld['password'], $userNew['password']);
+		$userNew = User::type($this->model->find(1));
+		$this->assertEquals($userOld->password, $userNew->password);
 	}
 
 	public function testLoginUseUsernameDummy()
